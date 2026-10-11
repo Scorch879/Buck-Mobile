@@ -71,4 +71,58 @@ class AppTextStyles {
         fontWeight: FontWeight.w700,
         color: AppColors.badgeCyanText,
       );
+
+  // App Shell
+  static TextStyle get headerTitle => GoogleFonts.inter(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        height: 24 / 18,
+        color: Colors.white,
+      );
+
+  // Dashboard cards (Manrope)
+  static TextStyle get cardTitle => GoogleFonts.manrope(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.cardTitle,
+      );
+
+  static TextStyle get sectionTitle => GoogleFonts.manrope(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: AppColors.cardTitle,
+      );
+
+  static TextStyle get amountLarge => GoogleFonts.manrope(
+        fontSize: 28,
+        fontWeight: FontWeight.w800,
+        color: AppColors.textPrimary,
+        letterSpacing: -0.56,
+      );
+
+  static TextStyle get metricValue => GoogleFonts.manrope(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: AppColors.metricValue,
+        letterSpacing: -0.22,
+      );
+
+  static TextStyle get amountSmall => GoogleFonts.manrope(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: AppColors.navBarIcon,
+      );
+
+  static TextStyle get badgeSoft => GoogleFonts.manrope(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: AppColors.badgeCyanText,
+      );
+
+  // Small captions (Inter)
+  static TextStyle get caption => GoogleFonts.inter(
+        fontSize: 11,
+        fontWeight: FontWeight.w400,
+        color: AppColors.textSecondary,
+      );
 }
