@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/services/supabase_service.dart';
 import 'core/theme/app_colors.dart';
-import 'features/auth/presentation/screens/sign_in_screen.dart';
+import 'features/auth/presentation/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,7 +45,7 @@ class BuckApp extends StatelessWidget {
           surface: AppColors.cardSurface,
         ),
       ),
-      home: const SignInScreen(),
+      home: const AuthGate(),
     );
   }
 }
