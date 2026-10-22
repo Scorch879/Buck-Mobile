@@ -301,9 +301,15 @@ class _ExpenseRowState extends State<_ExpenseRow> {
                   ],
                 ),
               ),
-              Text(
-                RecentExpensesCard.formatAmount(widget.entry.amount),
-                style: AppTextStyles.amountSmall,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    RecentExpensesCard.formatAmount(widget.entry.amount),
+                    style: AppTextStyles.amountSmall,
+                  ),
+                ),
               ),
             ],
           ),

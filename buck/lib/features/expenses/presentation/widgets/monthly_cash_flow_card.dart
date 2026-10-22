@@ -48,8 +48,11 @@ class MonthlyCashFlowCard extends StatelessWidget {
       color: AppColors.textSecondary,
     );
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 380;
+
     return BuckGlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 16 : 24, vertical: isCompact ? 18 : 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 16,
@@ -234,8 +237,9 @@ class _FlowTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(isCompact ? 10 : 14),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),

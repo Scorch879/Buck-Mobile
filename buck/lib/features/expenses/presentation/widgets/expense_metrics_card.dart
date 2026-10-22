@@ -22,10 +22,13 @@ class ExpenseMetricsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BuckGlassCard(
-      height: 96,
+      minHeight: 96,
       radius: 20,
       glowBlur: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.sizeOf(context).width < 380 ? 10 : 15,
+        vertical: 14,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -115,8 +118,10 @@ class _Divider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      height: 64,
-      margin: const EdgeInsets.symmetric(horizontal: 15),
+      height: 52,
+      margin: EdgeInsets.symmetric(
+        horizontal: MediaQuery.sizeOf(context).width < 380 ? 6 : 10,
+      ),
       color: AppColors.subtleDivider,
     );
   }

@@ -78,44 +78,61 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final isShort = size.height < 780;
+    final isNarrow = size.width < 380;
+
     return Scaffold(
       body: BuckBackground(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: BoxDecoration(
-                color: AppColors.cardSurface.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: AppColors.cardBorder, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo Avatar (matching Figma 2173:4312)
-                  const BuckLogoBadge(size: 84),
-                  const SizedBox(height: 20),
+            padding: EdgeInsets.symmetric(
+              horizontal: isNarrow ? 14 : 20,
+              vertical: isShort ? 12 : 24,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isNarrow ? 18 : 24,
+                  vertical: isShort ? 20 : 28,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.cardSurface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.cardBorder, width: 1.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Logo Avatar (matching Figma 2173:4312)
+                    BuckLogoBadge(size: isShort ? 72 : 84),
+                    SizedBox(height: isShort ? 14 : 20),
 
-                  // Eyebrow & Title
-                  Text('ACCOUNT RECOVERY', style: AppTextStyles.eyebrow),
-                  const SizedBox(height: 6),
-                  Text('Reset Password', style: AppTextStyles.h1),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Enter the email connected to your Buck account',
-                    style: AppTextStyles.bodySubdued,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
+                    // Eyebrow & Title
+                    Text('ACCOUNT RECOVERY', style: AppTextStyles.eyebrow),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Reset Password',
+                      style: isShort
+                          ? AppTextStyles.h1.copyWith(fontSize: 24)
+                          : AppTextStyles.h1,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Enter the email connected to your Buck account',
+                      style: AppTextStyles.bodySubdued,
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: isShort ? 18 : 28),
 
                   // Error Message Banner
                   if (_errorMessage != null) ...[
@@ -181,7 +198,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    const SizedBox(height: 28),
+                    SizedBox(height: isShort ? 18 : 28),
 
                     // Send Reset Link CTA (Orange button matching Figma)
                     BuckButton(
@@ -195,23 +212,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ],
 
                   // Footer: Back to Sign In
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Already have an account? ', style: AppTextStyles.bodySubdued),
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Text(
-                          'Back to Sign In',
-                          style: AppTextStyles.label.copyWith(
-                            color: AppColors.textPrimary,
-                            decoration: TextDecoration.underline,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Already have an account? ', style: AppTextStyles.bodySubdued),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Text(
+                            'Back to Sign In',
+                            style: AppTextStyles.label.copyWith(
+                              color: AppColors.textPrimary,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
+                ),
               ),
             ),
           ),

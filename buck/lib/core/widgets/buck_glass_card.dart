@@ -14,6 +14,7 @@ class BuckGlassCard extends StatelessWidget {
   final double glowBlur;
   final Color background;
   final double? height;
+  final double? minHeight;
 
   const BuckGlassCard({
     super.key,
@@ -23,12 +24,15 @@ class BuckGlassCard extends StatelessWidget {
     this.glowBlur = 14,
     this.background = AppColors.glassCardBg,
     this.height,
+    this.minHeight,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: height,
+      constraints:
+          minHeight != null ? BoxConstraints(minHeight: minHeight!) : null,
       padding: padding,
       decoration: BoxDecoration(
         color: background,

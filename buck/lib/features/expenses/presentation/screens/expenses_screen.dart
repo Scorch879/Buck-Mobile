@@ -44,7 +44,7 @@ class ExpensesScreen extends StatelessWidget {
           margin,
           24,
           margin,
-          120 + bottomInset.bottom,
+          85 + bottomInset.bottom,
         ),
         children: [
           Center(

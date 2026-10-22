@@ -28,8 +28,12 @@ class _AiAdvisoryBannerState extends State<AiAdvisoryBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
     return BuckGlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 16 : 24,
+        vertical: isCompact ? 16 : 20,
+      ),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,

@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 
 /// Five destinations of the Figma "Footer / Mobile" component (2156:4311).
-enum BuckTab { wallet, expenses, home, stats, settings }
+enum BuckTab { wallet, expenses, home, stats, goals }
 
 /// Floating bottom navigation bar.
 ///
@@ -58,7 +58,7 @@ class BuckFooterNav extends StatelessWidget {
       height: 30,
       centerX: 298,
     ),
-    BuckTab.settings: _TabMeta(
+    BuckTab.goals: _TabMeta(
       asset: 'assets/icons/footer_icon_goals.svg',
       width: 30,
       height: 30,
@@ -67,7 +67,7 @@ class BuckFooterNav extends StatelessWidget {
   };
 
   static bool hasDesign(BuckTab tab) =>
-      tab == BuckTab.home || tab == BuckTab.expenses;
+      tab == BuckTab.home || tab == BuckTab.expenses || tab == BuckTab.goals;
 
   // Tap zone boundaries (x within the 440 frame), split at the midpoints
   // between icon centres in the Figma vector.
@@ -172,7 +172,7 @@ class BuckFooterNav extends StatelessWidget {
     BuckTab.expenses: 'Expenses',
     BuckTab.home: 'Home',
     BuckTab.stats: 'Stats',
-    BuckTab.settings: 'Settings',
+    BuckTab.goals: 'Goals',
   };
 }
 

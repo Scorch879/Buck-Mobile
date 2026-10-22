@@ -55,7 +55,7 @@ class HomeDashboardScreen extends StatelessWidget {
           margin,
           20,
           margin,
-          120 + bottomInset.bottom,
+          85 + bottomInset.bottom,
         ),
         children: [
           Center(

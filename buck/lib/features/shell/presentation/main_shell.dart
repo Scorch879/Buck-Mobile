@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/dev_config.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/buck_footer_nav.dart';
@@ -12,6 +14,8 @@ import '../../expenses/presentation/add_expense_dialog.dart';
 import '../../expenses/presentation/screens/expenses_screen.dart';
 import '../../finance/data/finance_repository.dart';
 import '../../finance/presentation/finance_controller.dart';
+import '../../goals/presentation/goals_controller.dart';
+import '../../goals/presentation/screens/goals_screen.dart';
 import '../../income/presentation/add_income_dialog.dart';
 
 /// Signed-in app frame: backdrop, header, active page, floating footer nav.
@@ -20,11 +24,13 @@ class MainShell extends StatefulWidget {
 
   /// Injected in tests; defaults to one backed by the live Supabase client.
   final FinanceController? financeController;
+  final GoalsController? goalsController;
 
   const MainShell({
     super.key,
     this.initialTab = BuckTab.home,
     this.financeController,
+    this.goalsController,
   });
 
   @override
@@ -37,6 +43,8 @@ class _MainShellState extends State<MainShell> {
   late final FinanceController _finance =
       widget.financeController ??
       FinanceController(FinanceRepository(SupabaseService.client));
+  late final GoalsController _goals =
+      widget.goalsController ?? GoalsController();
 
   @override
   void initState() {
@@ -48,6 +56,7 @@ class _MainShellState extends State<MainShell> {
   void dispose() {
     // Only dispose controllers this widget created.
     if (widget.financeController == null) _finance.dispose();
+    if (widget.goalsController == null) _goals.dispose();
     super.dispose();
   }
 
@@ -74,6 +83,73 @@ class _MainShellState extends State<MainShell> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+  }
+
+  void _showMenuSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primaryOrange.withValues(alpha: 0.2),
+                      border: Border.all(color: AppColors.primaryOrange),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.person, color: AppColors.primaryOrange),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _welcomeTitle,
+                          style: AppTextStyles.h2.copyWith(fontSize: 16),
+                        ),
+                        Text(
+                          DevConfig.mockAdminSessionActive.value
+                              ? '${DevConfig.adminEmail} (Dev Mode)'
+                              : (_authService.currentUser?.email ?? ''),
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(color: AppColors.dividerColor),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Color(0xFFFF6B6B)),
+                title: const Text('Sign Out', style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w600)),
+                contentPadding: EdgeInsets.zero,
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  DevConfig.mockAdminSessionActive.value = false;
+                  await _authService.signOut();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showComingSoon(String feature) =>
@@ -126,7 +202,6 @@ class _MainShellState extends State<MainShell> {
       _showComingSoon(switch (tab) {
         BuckTab.wallet => 'Wallet',
         BuckTab.stats => 'Stats',
-        BuckTab.settings => 'Settings',
         _ => 'This page',
       });
       return;
@@ -188,16 +263,26 @@ class _MainShellState extends State<MainShell> {
                 bottomInset: contentInset,
               ),
             )
-          : KeyedSubtree(
-              key: const ValueKey(BuckTab.home),
-              child: HomeDashboardScreen(
-                snapshot: snapshot,
-                onQuickAction: _onQuickAction,
-                onRefresh: _finance.refresh,
-                onOpenReport: () => _showComingSoon('Financial report'),
-                bottomInset: contentInset,
-              ),
-            ),
+          : _tab == BuckTab.goals
+              ? KeyedSubtree(
+                  key: const ValueKey(BuckTab.goals),
+                  child: GoalsScreen(
+                    controller: _goals,
+                    onRefresh: _finance.refresh,
+                    onAction: _showMessage,
+                    bottomInset: contentInset,
+                  ),
+                )
+              : KeyedSubtree(
+                  key: const ValueKey(BuckTab.home),
+                  child: HomeDashboardScreen(
+                    snapshot: snapshot,
+                    onQuickAction: _onQuickAction,
+                    onRefresh: _finance.refresh,
+                    onOpenReport: () => _showComingSoon('Financial report'),
+                    bottomInset: contentInset,
+                  ),
+                ),
     );
   }
 
@@ -230,7 +315,7 @@ class _MainShellState extends State<MainShell> {
               Container(height: padding.top, color: AppColors.navBarBg),
               BuckHeader(
                 title: _welcomeTitle,
-                onMenuTap: () => _showComingSoon('Menu'),
+                onMenuTap: _showMenuSheet,
               ),
               Expanded(
                 child: MediaQuery.removePadding(

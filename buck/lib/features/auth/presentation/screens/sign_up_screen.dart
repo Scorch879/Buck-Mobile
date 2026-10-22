@@ -136,38 +136,56 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final isShort = size.height < 780;
+    final isNarrow = size.width < 380;
+
     return Scaffold(
       body: BuckBackground(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: BoxDecoration(
-                color: AppColors.cardSurface.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: AppColors.cardBorder, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo Avatar (matching Figma 2187:134)
-                  const BuckLogoBadge(size: 84),
-                  const SizedBox(height: 20),
+            padding: EdgeInsets.symmetric(
+              horizontal: isNarrow ? 14 : 20,
+              vertical: isShort ? 12 : 24,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isNarrow ? 18 : 24,
+                  vertical: isShort ? 20 : 28,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.cardSurface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.cardBorder, width: 1.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Logo Avatar (matching Figma 2187:134)
+                    BuckLogoBadge(size: isShort ? 68 : 84),
+                    SizedBox(height: isShort ? 12 : 20),
 
-                  // Eyebrow & Title
-                  Text('GET STARTED', style: AppTextStyles.eyebrow),
-                  const SizedBox(height: 6),
-                  Text('Create your Buck account', style: AppTextStyles.h1, textAlign: TextAlign.center),
-                  const SizedBox(height: 24),
+                    // Eyebrow & Title
+                    Text('GET STARTED', style: AppTextStyles.eyebrow),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Create your Buck account',
+                      style: isShort
+                          ? AppTextStyles.h1.copyWith(fontSize: 22)
+                          : AppTextStyles.h1,
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: isShort ? 16 : 24),
 
                   if (_accountCreated) ...[
                     Container(
@@ -214,36 +232,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                         onPressed: _isLoading ? null : _handleGoogleSignIn,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'G',
-                                style: TextStyle(
-                                  color: Color(0xFFEA4335),
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  'G',
+                                  style: TextStyle(
+                                    color: Color(0xFFEA4335),
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Continue with Google',
-                              style: AppTextStyles.label.copyWith(color: AppColors.textPrimary),
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Text(
+                                'Continue with Google',
+                                style: AppTextStyles.label.copyWith(color: AppColors.textPrimary),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: isShort ? 14 : 20),
 
                     // Divider
                     Row(
@@ -259,7 +280,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         const Expanded(child: Divider(color: AppColors.dividerColor, thickness: 1)),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: isShort ? 14 : 20),
 
                     // Error Banner
                     if (_errorMessage != null) ...[
@@ -296,7 +317,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       placeholder: 'Your full name',
                       controller: _nameController,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: isShort ? 10 : 16),
 
                     // Email input
                     BuckTextField(
@@ -305,7 +326,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: isShort ? 10 : 16),
 
                     // Password input
                     BuckTextField(
@@ -314,7 +335,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       controller: _passwordController,
                       isPassword: true,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: isShort ? 10 : 16),
 
                     // Confirm password input
                     BuckTextField(
@@ -323,7 +344,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       controller: _confirmPasswordController,
                       isPassword: true,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: isShort ? 16 : 24),
 
                     // Create Account CTA
                     BuckButton(
@@ -332,27 +353,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       isLoading: _isLoading,
                       onPressed: _handleSignUp,
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: isShort ? 14 : 20),
 
                     // Footer: Sign In link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Already have an account? ', style: AppTextStyles.bodySubdued),
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Text(
-                            'Sign In',
-                            style: AppTextStyles.label.copyWith(
-                              color: AppColors.textPrimary,
-                              decoration: TextDecoration.underline,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Already have an account? ', style: AppTextStyles.bodySubdued),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Text(
+                              'Sign In',
+                              style: AppTextStyles.label.copyWith(
+                                color: AppColors.textPrimary,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ],
+                ),
               ),
             ),
           ),

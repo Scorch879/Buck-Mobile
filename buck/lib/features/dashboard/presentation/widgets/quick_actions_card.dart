@@ -23,8 +23,12 @@ class QuickActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
     return BuckGlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 14 : 20,
+        vertical: isCompact ? 16 : 20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -35,7 +39,7 @@ class QuickActionsCard extends StatelessWidget {
               // 4 × 74px actions + 3 × 10px gaps
               constraints: const BoxConstraints(maxWidth: 326),
               child: Row(
-                spacing: 10,
+                spacing: isCompact ? 6 : 10,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final (action, icon, label) in _actions)

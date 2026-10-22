@@ -50,10 +50,11 @@ class FinancialOverviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 15,
+        spacing: isCompact ? 10 : 15,
         children: [
           Expanded(
             child: WalletCompactCard(
@@ -136,10 +137,12 @@ class WalletCompactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
     return BuckGlassCard(
+      padding: EdgeInsets.all(isCompact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 10,
+        spacing: isCompact ? 8 : 10,
         children: [
           _CompactCardHeader(
             title: 'My Wallet',
@@ -255,10 +258,12 @@ class WeeklySpendingCompactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 380;
     return BuckGlassCard(
+      padding: EdgeInsets.all(isCompact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 16,
+        spacing: isCompact ? 10 : 16,
         children: [
           _CompactCardHeader(
             title: 'Weekly Spending',
