@@ -85,7 +85,7 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
                           controller: _scrollController,
                           padding: const EdgeInsets.only(right: 16),
                           itemCount: widget.expenses.length,
-                          separatorBuilder: (_, _) => const ColoredBox(
+                          separatorBuilder: (_, __) => const ColoredBox(
                             color: AppColors.inputBg,
                             child: SizedBox(height: 1),
                           ),
