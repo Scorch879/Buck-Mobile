@@ -67,7 +67,11 @@ class BuckFooterNav extends StatelessWidget {
   };
 
   static bool hasDesign(BuckTab tab) =>
-      tab == BuckTab.home || tab == BuckTab.expenses || tab == BuckTab.goals;
+      tab == BuckTab.home ||
+      tab == BuckTab.expenses ||
+      tab == BuckTab.goals ||
+      tab == BuckTab.stats ||
+      tab == BuckTab.wallet;
 
   // Tap zone boundaries (x within the 440 frame), split at the midpoints
   // between icon centres in the Figma vector.

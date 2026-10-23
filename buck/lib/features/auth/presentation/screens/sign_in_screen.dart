@@ -86,6 +86,7 @@ class _SignInScreenState extends State<SignInScreen> {
       setState(() => _isLoading = false);
 
       if (response.user != null) {
+        DevConfig.mockAdminSessionActive.value = false;
         if (widget.onSignInSuccess != null) {
           widget.onSignInSuccess!();
         } else {
@@ -129,6 +130,7 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       if (response.user != null) {
+        DevConfig.mockAdminSessionActive.value = false;
         widget.onSignInSuccess?.call();
       }
     } on AuthException catch (e) {

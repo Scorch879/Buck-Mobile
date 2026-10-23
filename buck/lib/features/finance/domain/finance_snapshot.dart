@@ -31,6 +31,12 @@ class FinanceSnapshot {
 
   /// This month's expenses, newest first.
   final List<ExpenseRecord> monthExpenseList;
+
+  /// All tracked expenses across all time.
+  final List<ExpenseRecord> allExpenses;
+
+  /// All tracked incomes.
+  final List<IncomeRecord> allIncomes;
   final List<String> insights;
 
   const FinanceSnapshot({
@@ -49,10 +55,16 @@ class FinanceSnapshot {
     required this.monthIncome,
     required this.lastMonthIncome,
     required this.monthExpenseList,
+    this.allExpenses = const [],
+    this.allIncomes = const [],
     required this.insights,
   });
 
   double get walletBalance => activeWallet?.balance ?? 0;
+
+  /// Sum of all wallet balances.
+  double get totalNetWorth =>
+      wallets.fold(0.0, (sum, w) => sum + w.balance);
 
   bool get incomeTracked => monthIncome != null;
 
@@ -165,6 +177,8 @@ class FinanceSnapshot {
       monthIncome: monthIncome,
       lastMonthIncome: lastMonthIncome,
       monthExpenseList: monthList,
+      allExpenses: expenses,
+      allIncomes: incomes ?? const [],
       insights: data.advisories.map((a) => a.text).toList(),
     );
   }

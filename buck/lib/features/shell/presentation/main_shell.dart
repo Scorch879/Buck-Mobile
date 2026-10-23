@@ -12,11 +12,15 @@ import '../../dashboard/presentation/screens/home_dashboard_screen.dart';
 import '../../dashboard/presentation/widgets/quick_actions_card.dart';
 import '../../expenses/presentation/add_expense_dialog.dart';
 import '../../expenses/presentation/screens/expenses_screen.dart';
+import '../../finance/data/dev_finance_source.dart';
 import '../../finance/data/finance_repository.dart';
 import '../../finance/presentation/finance_controller.dart';
+import '../../goals/data/goals_repository.dart';
 import '../../goals/presentation/goals_controller.dart';
 import '../../goals/presentation/screens/goals_screen.dart';
 import '../../income/presentation/add_income_dialog.dart';
+import '../../stats/presentation/screens/stats_screen.dart';
+import '../../wallet/presentation/screens/wallet_screen.dart';
 
 /// Signed-in app frame: backdrop, header, active page, floating footer nav.
 class MainShell extends StatefulWidget {
@@ -42,14 +46,22 @@ class _MainShellState extends State<MainShell> {
   late BuckTab _tab = widget.initialTab;
   late final FinanceController _finance =
       widget.financeController ??
-      FinanceController(FinanceRepository(SupabaseService.client));
+      (SupabaseService.isInitialized
+          ? FinanceController(FinanceRepository(SupabaseService.client))
+          : FinanceController(DevFinanceSource()));
   late final GoalsController _goals =
-      widget.goalsController ?? GoalsController();
+      widget.goalsController ??
+      (SupabaseService.isInitialized && !DevConfig.mockAdminSessionActive.value
+          ? GoalsController(
+              repository: GoalsRepository(SupabaseService.client),
+            )
+          : GoalsController());
 
   @override
   void initState() {
     super.initState();
     _finance.start();
+    _goals.start();
   }
 
   @override
@@ -268,21 +280,46 @@ class _MainShellState extends State<MainShell> {
                   key: const ValueKey(BuckTab.goals),
                   child: GoalsScreen(
                     controller: _goals,
-                    onRefresh: _finance.refresh,
+                    activeWalletId: snapshot.activeWallet?.id,
+                    onRefresh: () async {
+                      await _finance.refresh();
+                      await _goals.refresh();
+                    },
                     onAction: _showMessage,
                     bottomInset: contentInset,
                   ),
                 )
-              : KeyedSubtree(
-                  key: const ValueKey(BuckTab.home),
-                  child: HomeDashboardScreen(
-                    snapshot: snapshot,
-                    onQuickAction: _onQuickAction,
-                    onRefresh: _finance.refresh,
-                    onOpenReport: () => _showComingSoon('Financial report'),
-                    bottomInset: contentInset,
-                  ),
-                ),
+              : _tab == BuckTab.stats
+                  ? KeyedSubtree(
+                      key: const ValueKey(BuckTab.stats),
+                      child: StatsScreen(
+                        snapshot: snapshot,
+                        onRefresh: _finance.refresh,
+                        bottomInset: contentInset,
+                      ),
+                    )
+                  : _tab == BuckTab.wallet
+                      ? KeyedSubtree(
+                          key: const ValueKey(BuckTab.wallet),
+                          child: WalletScreen(
+                            snapshot: snapshot,
+                            controller: _finance,
+                            onRefresh: _finance.refresh,
+                            onAddIncome: _addIncome,
+                            onMessage: _showMessage,
+                            bottomInset: contentInset,
+                          ),
+                        )
+                      : KeyedSubtree(
+                          key: const ValueKey(BuckTab.home),
+                          child: HomeDashboardScreen(
+                        snapshot: snapshot,
+                        onQuickAction: _onQuickAction,
+                        onRefresh: _finance.refresh,
+                        onOpenReport: () => _showComingSoon('Financial report'),
+                        bottomInset: contentInset,
+                      ),
+                    ),
     );
   }
 

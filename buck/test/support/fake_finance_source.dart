@@ -92,6 +92,35 @@ class FakeFinanceSource implements FinanceDataSource {
   }
 
   @override
+  Future<void> createWallet({
+    required String name,
+    required double initialBalance,
+  }) async {
+    final newId = 'wallet-${data.wallets.length + 1}';
+    final newWallet = Wallet(id: newId, name: name, balance: initialBalance);
+    data = FinanceData(
+      profileName: data.profileName,
+      activeWalletId: data.activeWalletId ?? newId,
+      wallets: [...data.wallets, newWallet],
+      expenses: data.expenses,
+      incomes: data.incomes,
+      advisories: data.advisories,
+    );
+  }
+
+  @override
+  Future<void> setActiveWallet(String walletId) async {
+    data = FinanceData(
+      profileName: data.profileName,
+      activeWalletId: walletId,
+      wallets: data.wallets,
+      expenses: data.expenses,
+      incomes: data.incomes,
+      advisories: data.advisories,
+    );
+  }
+
+  @override
   void Function() watch(void Function() onChange) => () {};
 }
 

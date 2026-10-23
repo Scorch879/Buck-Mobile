@@ -78,16 +78,28 @@ void main() {
     expect(find.text('October 2026'), findsOneWidget);
   });
 
-  testWidgets('Undesigned tab shows coming-soon instead of switching', (
+  testWidgets('Navigates to WalletScreen when wallet tab is tapped', (
+    tester,
+  ) async {
+    await pumpShell(tester, source());
+    await tester.tap(find.bySemanticsLabel('Wallet'));
+    await tester.pumpAndSettle();
+
+    final footer = tester.widget<BuckFooterNav>(find.byType(BuckFooterNav));
+    expect(footer.activeTab, BuckTab.wallet);
+    expect(find.text('Wallets & balances'), findsOneWidget);
+  });
+
+  testWidgets('Navigates to StatsScreen when stats tab is tapped', (
     tester,
   ) async {
     await pumpShell(tester, source());
     await tester.tap(find.bySemanticsLabel('Stats'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final footer = tester.widget<BuckFooterNav>(find.byType(BuckFooterNav));
-    expect(footer.activeTab, BuckTab.home);
-    expect(find.text('Stats is coming soon.'), findsOneWidget);
+    expect(footer.activeTab, BuckTab.stats);
+    expect(find.text('Category Breakdown'), findsOneWidget);
   });
 
   testWidgets('Add Income saves to the active wallet and refreshes', (

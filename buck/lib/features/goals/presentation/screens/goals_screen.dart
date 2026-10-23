@@ -14,6 +14,7 @@ class GoalsScreen extends StatelessWidget {
   final GoalsController controller;
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onAction;
+  final String? activeWalletId;
   final EdgeInsets bottomInset;
 
   const GoalsScreen({
@@ -21,13 +22,14 @@ class GoalsScreen extends StatelessWidget {
     required this.controller,
     required this.onRefresh,
     required this.onAction,
+    this.activeWalletId,
     this.bottomInset = EdgeInsets.zero,
   });
 
   Future<void> _handleCreateGoal(BuildContext context) async {
     final result = await showCreateGoalDialog(context);
     if (result != null) {
-      controller.addGoal(
+      await controller.addGoal(
         title: result.title,
         targetAmount: result.targetAmount,
         initialAmount: result.initialAmount,
@@ -43,7 +45,11 @@ class GoalsScreen extends StatelessWidget {
   Future<void> _handleAllocateFunds(BuildContext context, GoalItem goal) async {
     final amount = await showAllocateFundsDialog(context, goal: goal);
     if (amount != null && amount > 0) {
-      final success = controller.allocateFunds(goal.id, amount);
+      final success = await controller.allocateFunds(
+        goal.id,
+        amount,
+        walletId: activeWalletId,
+      );
       if (success) {
         final updatedGoal = controller.goals.firstWhere((g) => g.id == goal.id);
         if (updatedGoal.status == GoalStatus.completed) {

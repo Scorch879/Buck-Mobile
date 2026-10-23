@@ -105,6 +105,36 @@ class FinanceController extends ChangeNotifier {
     await refresh();
   }
 
+  /// Creates a new wallet and reloads.
+  Future<void> createWallet({
+    required String name,
+    required double initialBalance,
+  }) async {
+    try {
+      await _repository.createWallet(
+        name: name,
+        initialBalance: initialBalance,
+      );
+    } on PostgrestException catch (e) {
+      throw e.message;
+    } catch (e) {
+      throw e is String ? e : 'Could not create wallet. Please try again.';
+    }
+    await refresh();
+  }
+
+  /// Sets the active wallet and reloads.
+  Future<void> setActiveWallet(String walletId) async {
+    try {
+      await _repository.setActiveWallet(walletId);
+    } on PostgrestException catch (e) {
+      throw e.message;
+    } catch (e) {
+      throw e is String ? e : 'Could not set active wallet. Please try again.';
+    }
+    await refresh();
+  }
+
   // Coalesce bursts of realtime events (e.g. expense + wallet update).
   void _scheduleRefresh() {
     _debounce?.cancel();

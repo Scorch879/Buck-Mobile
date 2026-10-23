@@ -44,6 +44,70 @@ class DevFinanceSource implements FinanceDataSource {
         description: 'Fiber Internet bill',
         spentOn: DateTime.now().subtract(const Duration(days: 4)),
       ),
+      ExpenseRecord(
+        id: 'exp-5',
+        walletId: 'wallet-main',
+        categoryName: 'Food',
+        amount: 1450.00,
+        description: 'Weekend dinner with team',
+        spentOn: DateTime.now().subtract(const Duration(days: 6)),
+      ),
+      ExpenseRecord(
+        id: 'exp-6',
+        walletId: 'wallet-main',
+        categoryName: 'Shopping',
+        amount: 3890.00,
+        description: 'New shoes and work clothes',
+        spentOn: DateTime.now().subtract(const Duration(days: 10)),
+      ),
+      ExpenseRecord(
+        id: 'exp-7',
+        walletId: 'wallet-main',
+        categoryName: 'Bills & Utilities',
+        amount: 4850.00,
+        description: 'Meralco electricity bill',
+        spentOn: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      ExpenseRecord(
+        id: 'exp-8',
+        walletId: 'wallet-main',
+        categoryName: 'Transportation',
+        amount: 2200.00,
+        description: 'Shell gasoline full tank',
+        spentOn: DateTime.now().subtract(const Duration(days: 18)),
+      ),
+      ExpenseRecord(
+        id: 'exp-9',
+        walletId: 'wallet-main',
+        categoryName: 'Others',
+        amount: 1500.00,
+        description: 'Fitness gym monthly pass',
+        spentOn: DateTime.now().subtract(const Duration(days: 22)),
+      ),
+      ExpenseRecord(
+        id: 'exp-10',
+        walletId: 'wallet-main',
+        categoryName: 'Shopping',
+        amount: 18500.00,
+        description: 'External monitor for workstation',
+        spentOn: DateTime.now().subtract(const Duration(days: 40)),
+      ),
+      ExpenseRecord(
+        id: 'exp-11',
+        walletId: 'wallet-main',
+        categoryName: 'Bills & Utilities',
+        amount: 12500.00,
+        description: 'Quarterly insurance premium',
+        spentOn: DateTime.now().subtract(const Duration(days: 55)),
+      ),
+      ExpenseRecord(
+        id: 'exp-12',
+        walletId: 'wallet-main',
+        categoryName: 'Others',
+        amount: 8900.00,
+        description: 'Annual dental checkup & clinic',
+        spentOn: DateTime.now().subtract(const Duration(days: 70)),
+      ),
     ],
     incomes: [
       IncomeRecord(
@@ -143,6 +207,41 @@ class DevFinanceSource implements FinanceDataSource {
         ),
         ..._data.expenses,
       ],
+      incomes: _data.incomes,
+      advisories: _data.advisories,
+    );
+    for (final cb in _listeners) {
+      cb();
+    }
+  }
+
+  @override
+  Future<void> createWallet({
+    required String name,
+    required double initialBalance,
+  }) async {
+    final newId = 'wallet-${DateTime.now().millisecondsSinceEpoch}';
+    final newWallet = Wallet(id: newId, name: name, balance: initialBalance);
+    _data = FinanceData(
+      profileName: _data.profileName,
+      activeWalletId: _data.activeWalletId ?? newId,
+      wallets: [..._data.wallets, newWallet],
+      expenses: _data.expenses,
+      incomes: _data.incomes,
+      advisories: _data.advisories,
+    );
+    for (final cb in _listeners) {
+      cb();
+    }
+  }
+
+  @override
+  Future<void> setActiveWallet(String walletId) async {
+    _data = FinanceData(
+      profileName: _data.profileName,
+      activeWalletId: walletId,
+      wallets: _data.wallets,
+      expenses: _data.expenses,
       incomes: _data.incomes,
       advisories: _data.advisories,
     );

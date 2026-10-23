@@ -43,6 +43,13 @@ abstract class FinanceDataSource {
     required DateTime spentOn,
   });
 
+  Future<void> createWallet({
+    required String name,
+    required double initialBalance,
+  });
+
+  Future<void> setActiveWallet(String walletId);
+
   /// Calls [onChange] whenever the user's data changes.
   /// Returns a function that stops listening.
   void Function() watch(void Function() onChange);
@@ -177,9 +184,24 @@ class FinanceRepository implements FinanceDataSource {
     required DateTime spentOn,
   }) async {
     final userId = _userId;
+    String? categoryId;
+    try {
+      final cat = await _client
+          .from('categories')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('kind', 'expense')
+          .ilike('name', categoryName.trim())
+          .maybeSingle();
+      if (cat != null) {
+        categoryId = cat['id'] as String?;
+      }
+    } catch (_) {}
+
     await _client.from('expenses').insert({
       'user_id': userId,
       'wallet_id': walletId,
+      'category_id': categoryId,
       'category_name': categoryName,
       'amount': amount,
       'description': description,
@@ -205,6 +227,42 @@ class FinanceRepository implements FinanceDataSource {
     } catch (_) {
       // Wallet balance update fallback
     }
+  }
+
+  @override
+  Future<void> createWallet({
+    required String name,
+    required double initialBalance,
+  }) async {
+    final userId = _userId;
+    final res = await _client
+        .from('wallets')
+        .insert({
+          'user_id': userId,
+          'name': name,
+          'budget': initialBalance,
+        })
+        .select('id')
+        .maybeSingle();
+
+    try {
+      final profile = await _client
+          .from('profiles')
+          .select('active_wallet_id')
+          .eq('id', userId)
+          .maybeSingle();
+      if (profile != null && profile['active_wallet_id'] == null && res != null) {
+        await setActiveWallet(res['id'] as String);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> setActiveWallet(String walletId) async {
+    final userId = _userId;
+    await _client.from('profiles').update({
+      'active_wallet_id': walletId,
+    }).eq('id', userId);
   }
 
   /// Subscribes to Realtime changes on the user's finance tables.
