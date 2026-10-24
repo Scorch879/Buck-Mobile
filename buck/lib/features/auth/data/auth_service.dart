@@ -59,13 +59,16 @@ class AuthService {
   static const String mobileRedirectUrl = 'buck://auth-callback';
 
   /// Where Supabase sends the user back after Google sign-in.
-  /// - Web: back to this Flutter app's own origin (e.g. http://localhost:8080/),
-  ///   NOT the Supabase "Site URL" (the Buck Web app on Vercel).
-  /// - Android/iOS: the custom `buck://` deep link.
-  /// Both must be listed under Supabase > Auth > URL Configuration > Redirect URLs,
-  /// otherwise Supabase silently falls back to the Site URL.
-  static String get oauthRedirectUrl =>
-      kIsWeb ? '${Uri.base.origin}/' : mobileRedirectUrl;
+  /// - Web: back to this Flutter app's own origin with trailing slash (e.g. http://localhost:8080/),
+  ///   which matches Supabase allowlists like 'http://localhost:8080/' or 'http://localhost:8080/**'.
+  /// - Android/iOS: the custom `buck://auth-callback` deep link.
+  static String get oauthRedirectUrl {
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      return origin.endsWith('/') ? origin : '$origin/';
+    }
+    return mobileRedirectUrl;
+  }
 
   /// Initiate OAuth flow with Google
   Future<bool> signInWithGoogle() async {
