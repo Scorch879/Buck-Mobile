@@ -12,6 +12,7 @@ import '../../dashboard/presentation/screens/home_dashboard_screen.dart';
 import '../../dashboard/presentation/widgets/quick_actions_card.dart';
 import '../../expenses/presentation/add_expense_dialog.dart';
 import '../../expenses/presentation/screens/expenses_screen.dart';
+import '../../expenses/presentation/screens/receipt_scanner_screen.dart';
 import '../../finance/data/dev_finance_source.dart';
 import '../../finance/data/finance_repository.dart';
 import '../../finance/presentation/finance_controller.dart';
@@ -176,7 +177,7 @@ class _MainShellState extends State<MainShell> {
     final saved = await showAddIncomeDialog(
       context,
       wallet: wallet,
-      onScan: () => _showComingSoon('Scan Receipt'),
+      onScan: _scanReceipt,
       onSubmit: (request) => _finance.addIncome(
         walletId: wallet.id,
         amount: request.amount,
@@ -188,7 +189,7 @@ class _MainShellState extends State<MainShell> {
     if (saved && mounted) _showMessage('Income added to ${wallet.name}.');
   }
 
-  Future<void> _addExpense() async {
+  Future<void> _addExpense({ScannedReceiptResult? initialReceipt}) async {
     final wallet = _finance.snapshot?.activeWallet;
     if (wallet == null) {
       _showMessage('Create or select a wallet first to add spending.');
@@ -197,7 +198,7 @@ class _MainShellState extends State<MainShell> {
     final saved = await showAddExpenseDialog(
       context,
       wallet: wallet,
-      onScan: () => _showComingSoon('Scan Receipt'),
+      initialReceipt: initialReceipt,
       onSubmit: (request) => _finance.addExpense(
         walletId: wallet.id,
         amount: request.amount,
@@ -207,6 +208,12 @@ class _MainShellState extends State<MainShell> {
       ),
     );
     if (saved && mounted) _showMessage('Expense added to ${wallet.name}.');
+  }
+
+  Future<void> _scanReceipt() async {
+    final scanned = await showReceiptScanner(context);
+    if (scanned == null || !mounted) return;
+    await _addExpense(initialReceipt: scanned);
   }
 
   void _onTabSelected(BuckTab tab) {
@@ -222,6 +229,10 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _onQuickAction(QuickAction action) {
+    if (action == QuickAction.scanReceipt) {
+      _scanReceipt();
+      return;
+    }
     if (action == QuickAction.addIncome) {
       _addIncome();
       return;
@@ -325,19 +336,21 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final padding = MediaQuery.paddingOf(context);
-    // Figma: footer floats 12px above the system navigation area.
-    final footerBottom = padding.bottom + 12;
+    final padding = MediaQuery.viewPaddingOf(context);
+    // Anchor the floating footer near the very bottom of the screen, leaving
+    // only minimal clearance for gesture home indicators on notched phones.
+    final footerBottom = padding.bottom > 0
+        ? (padding.bottom * 0.35).clamp(4.0, 10.0)
+        : 4.0;
     final contentInset = EdgeInsets.only(bottom: footerBottom);
 
     return ListenableBuilder(
       listenable: _finance,
-      builder: (context, _) => _scaffold(padding, footerBottom, contentInset),
+      builder: (context, _) => _scaffold(footerBottom, contentInset),
     );
   }
 
   Widget _scaffold(
-    EdgeInsets padding,
     double footerBottom,
     EdgeInsets contentInset,
   ) {
@@ -348,8 +361,6 @@ class _MainShellState extends State<MainShell> {
           const Positioned.fill(child: BuckScreenBackground()),
           Column(
             children: [
-              // System / Status Bar strip
-              Container(height: padding.top, color: AppColors.navBarBg),
               BuckHeader(
                 title: _welcomeTitle,
                 onMenuTap: _showMenuSheet,

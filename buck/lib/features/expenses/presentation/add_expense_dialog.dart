@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/buck_overlay_dialog.dart';
 import '../../finance/data/finance_models.dart';
+import 'screens/receipt_scanner_screen.dart';
 
 /// Categories offered in the Category field for spending.
 const expenseCategories = [
@@ -44,11 +45,16 @@ Future<bool> showAddExpenseDialog(
   required Wallet wallet,
   required Future<void> Function(AddExpenseRequest request) onSubmit,
   VoidCallback? onScan,
+  ScannedReceiptResult? initialReceipt,
 }) async {
   final saved = await showBuckOverlayDialog<bool>(
     context: context,
-    builder: (_) =>
-        AddExpenseDialog(wallet: wallet, onSubmit: onSubmit, onScan: onScan),
+    builder: (_) => AddExpenseDialog(
+      wallet: wallet,
+      onSubmit: onSubmit,
+      onScan: onScan,
+      initialReceipt: initialReceipt,
+    ),
   );
   return saved ?? false;
 }
@@ -57,12 +63,14 @@ class AddExpenseDialog extends StatefulWidget {
   final Wallet wallet;
   final Future<void> Function(AddExpenseRequest request) onSubmit;
   final VoidCallback? onScan;
+  final ScannedReceiptResult? initialReceipt;
 
   const AddExpenseDialog({
     super.key,
     required this.wallet,
     required this.onSubmit,
     this.onScan,
+    this.initialReceipt,
   });
 
   @override
@@ -78,6 +86,40 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   DateTime _date = DateTime.now();
   bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialReceipt;
+    if (initial != null) {
+      _applyScannedReceipt(initial);
+    }
+  }
+
+  void _applyScannedReceipt(ScannedReceiptResult receipt) {
+    _amountController.text = receipt.amount.toStringAsFixed(2);
+    _descriptionController.text = receipt.description;
+    _date = receipt.date;
+    if (expenseCategories.contains(receipt.categoryName)) {
+      _category = receipt.categoryName;
+    } else {
+      _category = 'Shopping';
+    }
+  }
+
+  Future<void> _handleScanTap() async {
+    if (widget.onScan != null) {
+      widget.onScan!();
+      return;
+    }
+    final result = await showReceiptScanner(context);
+    if (result != null && mounted) {
+      setState(() {
+        _applyScannedReceipt(result);
+        _error = null;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -256,7 +298,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 label: 'Scan',
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: widget.onScan,
+                  onTap: _handleScanTap,
                   child: SvgPicture.asset('assets/icons/scan_large.svg'),
                 ),
               ),

@@ -8,8 +8,12 @@ import '../../../../core/utils/currency.dart';
 import '../../../finance/domain/finance_snapshot.dart';
 import '../../domain/stats_data.dart';
 import '../widgets/category_breakdown_card.dart';
+import '../widgets/spending_trend_card.dart';
 
-/// Figma "Screen / Statistics" (#2368:641) with dynamic, non-static category spending data.
+/// Figma "Screen / Statistics" (#2368:641) with updated Figma design:
+/// - Hero Card 1: Category Breakdown Card with solid Pie Chart (#2402:1560)
+/// - Hero Card 2: Spending Trend Line Graph Card (#2462:577)
+/// - Activity Section: Dynamic transaction entries from database
 class StatsScreen extends StatefulWidget {
   final FinanceSnapshot snapshot;
   final Future<void> Function() onRefresh;
@@ -40,13 +44,22 @@ class _StatsScreenState extends State<StatsScreen> {
     // Use all tracked expenses; fallback to monthExpenseList if allExpenses is empty
     final sourceExpenses = s.allExpenses.isNotEmpty ? s.allExpenses : s.monthExpenseList;
 
+    // 1. Dynamic category summary for Card 1
     final summary = StatsCalculator.calculate(
       expenses: sourceExpenses,
       period: _selectedPeriod,
       now: s.now,
     );
 
-    // Filter transaction list below card if a specific category is selected
+    // 2. Dynamic spending trend data for Card 2
+    final trendData = StatsCalculator.calculateTrend(
+      expenses: sourceExpenses,
+      period: _selectedPeriod,
+      now: s.now,
+      categoryId: _selectedCategoryId,
+    );
+
+    // 3. Filter transaction list below card if a specific category is selected
     final visibleExpenses = _selectedCategoryId == null
         ? summary.filteredExpenses
         : summary.filteredExpenses.where((e) {
@@ -95,7 +108,25 @@ class _StatsScreenState extends State<StatsScreen> {
                     },
                   ),
 
-                  // 2. Filtered Transactions Activity Card
+                  // 2. Figma Spending Trend Line Graph Card (#2462:577)
+                  SpendingTrendCard(
+                    trendData: trendData,
+                    selectedPeriod: _selectedPeriod,
+                    onPeriodChanged: (period) {
+                      setState(() {
+                        _selectedPeriod = period;
+                      });
+                    },
+                    selectedCategoryId: _selectedCategoryId,
+                    selectedCategory: selectedCat,
+                    onClearCategory: () {
+                      setState(() {
+                        _selectedCategoryId = null;
+                      });
+                    },
+                  ),
+
+                  // 3. Filtered Transactions Activity Card
                   _buildActivityCard(visibleExpenses, selectedCat),
                 ],
               ),
@@ -168,8 +199,8 @@ class _StatsScreenState extends State<StatsScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: dynamicExpenses.length,
-              separatorBuilder: (_, __) => Divider(
-                color: const Color(0x1FFF994A),
+              separatorBuilder: (_, __) => const Divider(
+                color: Color(0x1FFF994A),
                 height: 16,
               ),
               itemBuilder: (context, index) {

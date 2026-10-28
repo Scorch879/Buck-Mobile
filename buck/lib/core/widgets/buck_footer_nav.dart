@@ -21,17 +21,18 @@ class BuckFooterNav extends StatelessWidget {
     required this.onTabSelected,
   });
 
-  /// Total footer height in the Figma frame (bar + raised tab overflow).
-  static const double height = 98;
+  /// Tight height matching the 72px raised tab indicator so there is no excess
+  /// empty vertical gap below the 65px pill bar.
+  static const double height = 72;
 
   static const double _frameWidth = 440;
-  static const double _barWidth = 408;
+  static const double _barWidth = 416;
   static const double _barHeight = 65;
   static const double _barLeft = (_frameWidth - _barWidth) / 2;
-  static const double _barTop = (height - _barHeight) / 2 + 0.5;
+  static const double _barTop = (height - _barHeight) / 2;
 
   static const double _circleDiameter = 72;
-  static const double _circleTop = (height - _circleDiameter) / 2;
+  static const double _circleTop = 0;
 
   static const Map<BuckTab, _TabMeta> _tabMetas = {
     BuckTab.wallet: _TabMeta(
@@ -86,6 +87,7 @@ class BuckFooterNav extends StatelessWidget {
       height: height,
       child: FittedBox(
         fit: BoxFit.scaleDown,
+        alignment: Alignment.bottomCenter,
         child: SizedBox(
           width: _frameWidth,
           height: height,

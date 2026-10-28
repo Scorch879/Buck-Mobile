@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../finance/data/finance_models.dart';
 import '../../finance/domain/finance_snapshot.dart';
@@ -213,4 +214,153 @@ class StatsCalculator {
     }
     return 'others';
   }
+
+  /// Default line color for "All" categories (#2C93B8 from Figma node #2462:568)
+  static const Color colorTrendAll = Color(0xFF2C93B8);
+
+  /// Resolves the trend line & area color based on the selected category
+  static Color trendColor(String? categoryId) {
+    switch (categoryId) {
+      case 'shopping':
+        return colorShopping;
+      case 'bills':
+        return colorBills;
+      case 'food':
+        return colorFood;
+      case 'transport':
+        return colorTransport;
+      case 'others':
+        return colorOthers;
+      default:
+        return colorTrendAll;
+    }
+  }
+
+  /// Calculates points for the Spending Trend line chart.
+  static SpendingTrendData calculateTrend({
+    required List<ExpenseRecord> expenses,
+    required StatsPeriod period,
+    required DateTime now,
+    String? categoryId,
+  }) {
+    final catFiltered = categoryId == null
+        ? expenses
+        : expenses.where((e) => mapCategory(e.categoryName) == categoryId).toList();
+
+    final List<SpendingTrendPoint> points = [];
+
+    switch (period) {
+      case StatsPeriod.allTime:
+        // 8-10 monthly checkpoints spanning up to current month (e.g. Jan, Apr, Jul, Oct)
+        const monthsCount = 10;
+        final startMonth = DateTime(now.year, now.month - (monthsCount - 1), 1);
+
+        for (var i = 0; i < monthsCount; i++) {
+          final mDate = DateTime(startMonth.year, startMonth.month + i, 1);
+          final nextMDate = DateTime(mDate.year, mDate.month + 1, 1);
+
+          final monthSum = catFiltered
+              .where((e) => !e.spentOn.isBefore(mDate) && e.spentOn.isBefore(nextMDate))
+              .fold<double>(0.0, (acc, e) => acc + e.amount);
+
+          final label = DateFormat('MMM').format(mDate);
+          points.add(SpendingTrendPoint(
+            date: mDate,
+            label: label,
+            amount: monthSum,
+          ));
+        }
+
+      case StatsPeriod.thisMonth:
+        // Checkpoints across current month: e.g. Day 1, 8, 15, 22, and month end
+        final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+        final checkpoints = [
+          1,
+          (daysInMonth * 0.25).round().clamp(1, daysInMonth),
+          (daysInMonth * 0.50).round().clamp(1, daysInMonth),
+          (daysInMonth * 0.75).round().clamp(1, daysInMonth),
+          daysInMonth,
+        ];
+
+        for (var i = 0; i < checkpoints.length; i++) {
+          final day = checkpoints[i];
+          final startDay = i == 0 ? 1 : checkpoints[i - 1] + 1;
+          final pStart = DateTime(now.year, now.month, startDay);
+          final pEnd = DateTime(now.year, now.month, day, 23, 59, 59);
+
+          final bucketSum = catFiltered
+              .where((e) => !e.spentOn.isBefore(pStart) && !e.spentOn.isAfter(pEnd))
+              .fold<double>(0.0, (acc, e) => acc + e.amount);
+
+          points.add(SpendingTrendPoint(
+            date: DateTime(now.year, now.month, day),
+            label: 'Day $day',
+            amount: bucketSum,
+          ));
+        }
+
+      case StatsPeriod.thisWeek:
+        // 7 days of the current week: Mon-Sun
+        final weekStart = FinanceSnapshot.startOfWeek(now);
+        const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        for (var i = 0; i < 7; i++) {
+          final dayDate = DateTime(weekStart.year, weekStart.month, weekStart.day + i);
+          final nextDay = DateTime(dayDate.year, dayDate.month, dayDate.day + 1);
+
+          final daySum = catFiltered
+              .where((e) => !e.spentOn.isBefore(dayDate) && e.spentOn.isBefore(nextDay))
+              .fold<double>(0.0, (acc, e) => acc + e.amount);
+
+          points.add(SpendingTrendPoint(
+            date: dayDate,
+            label: dayLabels[i],
+            amount: daySum,
+          ));
+        }
+    }
+
+    final maxVal = points.isEmpty
+        ? 0.0
+        : points.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
+    final total = points.fold<double>(0.0, (acc, p) => acc + p.amount);
+
+    return SpendingTrendData(
+      period: period,
+      categoryId: categoryId,
+      points: points,
+      maxAmount: maxVal,
+      totalAmount: total,
+    );
+  }
+}
+
+/// A point on the spending trend graph.
+class SpendingTrendPoint {
+  final DateTime date;
+  final String label;
+  final double amount;
+
+  const SpendingTrendPoint({
+    required this.date,
+    required this.label,
+    required this.amount,
+  });
+}
+
+/// Data payload for rendering the Spending Trend card.
+class SpendingTrendData {
+  final StatsPeriod period;
+  final String? categoryId;
+  final List<SpendingTrendPoint> points;
+  final double maxAmount;
+  final double totalAmount;
+
+  const SpendingTrendData({
+    required this.period,
+    this.categoryId,
+    required this.points,
+    required this.maxAmount,
+    required this.totalAmount,
+  });
 }

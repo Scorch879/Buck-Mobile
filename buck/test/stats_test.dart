@@ -3,6 +3,7 @@ import 'package:buck/features/finance/domain/finance_snapshot.dart';
 import 'package:buck/features/stats/domain/stats_data.dart';
 import 'package:buck/features/stats/presentation/screens/stats_screen.dart';
 import 'package:buck/features/stats/presentation/widgets/category_breakdown_card.dart';
+import 'package:buck/features/stats/presentation/widgets/spending_trend_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -114,10 +115,40 @@ void main() {
         expect(cat.percentage, 0);
       }
     });
+
+    test('calculates spending trend data correctly', () {
+      final trendAllTime = StatsCalculator.calculateTrend(
+        expenses: sampleExpenses,
+        period: StatsPeriod.allTime,
+        now: now,
+      );
+
+      expect(trendAllTime.points.length, 10);
+      expect(trendAllTime.maxAmount, greaterThanOrEqualTo(1000));
+
+      final trendThisMonth = StatsCalculator.calculateTrend(
+        expenses: sampleExpenses,
+        period: StatsPeriod.thisMonth,
+        now: now,
+      );
+      expect(trendThisMonth.points.length, 5); // 5 weeks in Oct 2026
+
+      final trendCategory = StatsCalculator.calculateTrend(
+        expenses: sampleExpenses,
+        period: StatsPeriod.allTime,
+        categoryId: 'shopping',
+        now: now,
+      );
+      expect(trendCategory.points.any((p) => p.amount == 1000), isTrue);
+      expect(trendCategory.points.any((p) => p.amount == 2000), isFalse);
+
+      expect(StatsCalculator.trendColor(null), const Color(0xFF2C93B8));
+      expect(StatsCalculator.trendColor('shopping'), const Color(0xFF9B72F2));
+    });
   });
 
   group('StatsScreen Widget', () {
-    testWidgets('renders category breakdown card with non-static dynamic values', (tester) async {
+    testWidgets('renders category breakdown card and spending trend card with non-static dynamic values', (tester) async {
       final snapshot = FinanceSnapshot(
         now: now,
         displayName: 'Tester',
@@ -150,17 +181,34 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Eyebrow and Title
+      // Card 1: Eyebrow and Title
       expect(find.text('CATEGORY SPENDING'), findsOneWidget);
       expect(find.text('Category Breakdown'), findsOneWidget);
 
-      // Period Pills
-      expect(find.text('All Time'), findsOneWidget);
-      expect(find.text('This Month'), findsOneWidget);
-      expect(find.text('This Week'), findsOneWidget);
+      // Card 2: Spending Trend Card (Figma #2462:577)
+      expect(find.byType(SpendingTrendCard), findsOneWidget);
+      expect(find.text('Spending Trend'), findsOneWidget);
 
-      // Side Categories labels
-      expect(find.text('All'), findsOneWidget);
+      // Card 1 Period Pills
+      final card1PillAllTime = find.descendant(
+        of: find.byType(CategoryBreakdownCard),
+        matching: find.text('All Time'),
+      );
+      final card1PillThisMonth = find.descendant(
+        of: find.byType(CategoryBreakdownCard),
+        matching: find.text('This Month'),
+      );
+      final card1PillThisWeek = find.descendant(
+        of: find.byType(CategoryBreakdownCard),
+        matching: find.text('This Week'),
+      );
+
+      expect(card1PillAllTime, findsOneWidget);
+      expect(card1PillThisMonth, findsOneWidget);
+      expect(card1PillThisWeek, findsOneWidget);
+
+      // Side Categories labels in Card 1
+      expect(find.text('All'), findsWidgets);
       expect(find.text('Shopping'), findsWidgets);
       expect(find.text('Bills'), findsWidgets);
       expect(find.text('Food'), findsWidgets);
@@ -171,16 +219,16 @@ void main() {
       expect(find.text('₱5,000.00'), findsOneWidget);
       expect(find.text('TOTAL ALL-TIME'), findsOneWidget);
 
-      // Tap "This Month" filter
-      await tester.tap(find.text('This Month'));
+      // Tap "This Month" filter on Card 1
+      await tester.tap(card1PillThisMonth);
       await tester.pumpAndSettle();
 
       // Total amount should update dynamically to ₱3,500.00!
       expect(find.text('₱3,500.00'), findsOneWidget);
       expect(find.text('TOTAL THIS MONTH'), findsOneWidget);
 
-      // Tap "This Week" filter
-      await tester.tap(find.text('This Week'));
+      // Tap "This Week" filter on Card 1
+      await tester.tap(card1PillThisWeek);
       await tester.pumpAndSettle();
 
       // Total amount should update dynamically to ₱3,000.00!

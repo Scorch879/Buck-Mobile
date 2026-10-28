@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/utils/currency.dart';
 import '../../domain/stats_data.dart';
 
-/// Donut chart rendering category breakdown with Figma-exact segment colors (#2402:655).
+/// Pie Chart rendering category breakdown with Figma-exact solid slices (#2402:656).
 class CategoryDonutChart extends StatelessWidget {
   final StatsSummary summary;
   final String? selectedCategoryId;
@@ -18,7 +18,7 @@ class CategoryDonutChart extends StatelessWidget {
     required this.summary,
     required this.selectedCategoryId,
     required this.onSelectCategory,
-    this.size = 150,
+    this.size = 148,
   });
 
   @override
@@ -39,7 +39,7 @@ class CategoryDonutChart extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // 1. Donut Chart Canvas
+        // 1. Solid Pie Chart Canvas with direct percentage labels
         GestureDetector(
           onTapUp: (details) => _handleTap(details.localPosition),
           child: SizedBox(
@@ -47,14 +47,14 @@ class CategoryDonutChart extends StatelessWidget {
             height: size,
             child: CustomPaint(
               size: Size(size, size),
-              painter: _DonutChartPainter(
+              painter: _PieChartPainter(
                 summary: summary,
                 selectedCategoryId: selectedCategoryId,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
         // 2. Amount Text & Period Subtitle (Figma: #2402:651)
         Text(
@@ -87,7 +87,6 @@ class CategoryDonutChart extends StatelessWidget {
     final dy = localPos.dy - center.dy;
     final distance = math.sqrt(dx * dx + dy * dy);
 
-    // Donut radius is size/2 * 0.9. Check if tap is inside the ring or outer circle.
     final outerRadius = size / 2;
     if (distance > outerRadius + 8) return;
 
@@ -98,7 +97,6 @@ class CategoryDonutChart extends StatelessWidget {
 
     // Calculate angle in radians normalized to [0, 2*pi), starting from top (-pi/2)
     var angle = math.atan2(dy, dx);
-    // Convert so 0 is at -pi/2 (12 o'clock)
     angle = (angle + math.pi / 2) % (2 * math.pi);
     if (angle < 0) angle += 2 * math.pi;
 
@@ -108,7 +106,6 @@ class CategoryDonutChart extends StatelessWidget {
       final sweep = (cat.percentage / 100.0) * 2 * math.pi;
       if (angle >= currentAngle && angle <= currentAngle + sweep) {
         if (selectedCategoryId == cat.id) {
-          // Deselect if already selected
           onSelectCategory(null);
         } else {
           onSelectCategory(cat.id);
@@ -118,16 +115,15 @@ class CategoryDonutChart extends StatelessWidget {
       currentAngle += sweep;
     }
 
-    // Tapped hollow center or empty gap -> reset selection
     onSelectCategory(null);
   }
 }
 
-class _DonutChartPainter extends CustomPainter {
+class _PieChartPainter extends CustomPainter {
   final StatsSummary summary;
   final String? selectedCategoryId;
 
-  _DonutChartPainter({
+  _PieChartPainter({
     required this.summary,
     required this.selectedCategoryId,
   });
@@ -135,99 +131,112 @@ class _DonutChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final outerRadius = (size.width / 2) * 0.94;
-    const strokeWidth = 22.0;
-    final ringRadius = outerRadius - (strokeWidth / 2);
-
-    final bgPaint = Paint()
-      ..color = const Color(0x1FFFF7EE)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-
-    // Background track ring
-    canvas.drawCircle(center, ringRadius, bgPaint);
+    final radius = (size.width / 2) * 0.96;
 
     if (summary.totalAmount <= 0) {
-      // Empty state dashed or faint ring
+      // Empty state circular backdrop
+      final emptyPaint = Paint()
+        ..color = const Color(0xFF3A2218)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(center, radius, emptyPaint);
+
+      final emptyBorder = Paint()
+        ..color = const Color(0x33FF994A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawCircle(center, radius, emptyBorder);
+
+      final tp = TextPainter(
+        text: TextSpan(
+          text: 'No data',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            color: const Color(0xFFC6B5AB),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
       return;
     }
 
-    // Filter categories with non-zero percentage
+    var startAngle = -math.pi / 2; // 12 o'clock
+
+    // Filter categories with positive amounts
     final activeCategories = summary.categories.where((c) => c.percentage > 0).toList();
-    if (activeCategories.isEmpty) return;
-
-    var startAngle = -math.pi / 2; // Start from 12 o'clock
-    const gapAngle = 0.04; // ~2.3 degrees visual gap between segments
-
-    final totalGaps = activeCategories.length > 1 ? activeCategories.length * gapAngle : 0.0;
-    final availableAngle = (2 * math.pi) - totalGaps;
-
-    final textPainters = <_ArcLabel>[];
 
     for (final cat in activeCategories) {
-      final sweepAngle = (cat.percentage / 100.0) * availableAngle;
+      final sweepAngle = (cat.percentage / 100.0) * 2 * math.pi;
       final isSelected = selectedCategoryId == cat.id;
-      final hasSelection = selectedCategoryId != null;
 
-      final paint = Paint()
-        ..color = hasSelection
-            ? (isSelected ? cat.color : cat.color.withValues(alpha: 0.35))
-            : cat.color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isSelected ? strokeWidth + 4.0 : strokeWidth
-        ..strokeCap = StrokeCap.round;
-
-      // Draw segment arc
-      final arcRect = Rect.fromCircle(
-        center: center,
-        radius: isSelected ? ringRadius + 1.0 : ringRadius,
+      // Slight outwards offset for selected category slice
+      final midAngle = startAngle + (sweepAngle / 2);
+      final offsetDist = isSelected ? 6.0 : 0.0;
+      final sliceOffset = Offset(
+        math.cos(midAngle) * offsetDist,
+        math.sin(midAngle) * offsetDist,
       );
-      canvas.drawArc(arcRect, startAngle, sweepAngle, false, paint);
 
-      // Prepare percentage label if the arc is wide enough (> 12% or > 0.45 rad)
-      if (cat.percentage >= 8.0) {
-        final midAngle = startAngle + (sweepAngle / 2);
-        final labelRadius = ringRadius;
-        final labelX = center.dx + labelRadius * math.cos(midAngle);
-        final labelY = center.dy + labelRadius * math.sin(midAngle);
+      final sliceCenter = center + sliceOffset;
+      final sectorRect = Rect.fromCircle(center: sliceCenter, radius: radius);
 
-        final span = TextSpan(
-          text: '${cat.percentage.round()}%',
-          style: GoogleFonts.manrope(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: isSelected
-                ? const Color(0xFFFFF7EE)
-                : const Color(0xFFD5E2F5),
-          ),
+      // 1. Draw solid sector slice
+      final fillPaint = Paint()
+        ..color = cat.color
+        ..style = PaintingStyle.fill;
+      canvas.drawArc(sectorRect, startAngle, sweepAngle, true, fillPaint);
+
+      // 2. Draw border between slices for clean Figma-accurate delineation
+      final borderPaint = Paint()
+        ..color = isSelected ? const Color(0xFFFF994A) : const Color(0xFF160905)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = isSelected ? 2.5 : 1.5;
+      canvas.drawArc(sectorRect, startAngle, sweepAngle, true, borderPaint);
+
+      // 3. Draw percentage label directly inside the slice (matching Figma #2402:646-650)
+      if (cat.percentage >= 6.0) {
+        final labelRadius = radius * 0.62;
+        final labelPos = Offset(
+          sliceCenter.dx + math.cos(midAngle) * labelRadius,
+          sliceCenter.dy + math.sin(midAngle) * labelRadius,
         );
-        final tp = TextPainter(
-          text: span,
-          textAlign: TextAlign.center,
+
+        final labelPainter = TextPainter(
+          text: TextSpan(
+            text: '${cat.percentage.round()}%',
+            style: GoogleFonts.manrope(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFFFF7EE),
+              shadows: const [
+                Shadow(
+                  color: Color(0xCC000000),
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
           textDirection: TextDirection.ltr,
         )..layout();
 
-        textPainters.add(_ArcLabel(tp: tp, offset: Offset(labelX - tp.width / 2, labelY - tp.height / 2)));
+        labelPainter.paint(
+          canvas,
+          Offset(
+            labelPos.dx - labelPainter.width / 2,
+            labelPos.dy - labelPainter.height / 2,
+          ),
+        );
       }
 
-      startAngle += sweepAngle + (activeCategories.length > 1 ? gapAngle : 0.0);
-    }
-
-    // Paint all percentage labels on top of segments
-    for (final label in textPainters) {
-      label.tp.paint(canvas, label.offset);
+      startAngle += sweepAngle;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _DonutChartPainter oldDelegate) {
+  bool shouldRepaint(_PieChartPainter oldDelegate) {
     return oldDelegate.summary != summary ||
         oldDelegate.selectedCategoryId != selectedCategoryId;
   }
-}
-
-class _ArcLabel {
-  final TextPainter tp;
-  final Offset offset;
-  _ArcLabel({required this.tp, required this.offset});
 }
