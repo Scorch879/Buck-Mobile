@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/buck_glass_card.dart';
+import '../../../ai/presentation/widgets/ai_goal_tip_dialog.dart';
 import '../../data/goal_model.dart';
 
 class GoalCard extends StatelessWidget {
@@ -41,7 +43,7 @@ class GoalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Header Row: Icon + Title/Target + Status Badge
+          // 1. Header Row: Icon + Title/Target + Status Badge + AI Tip
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -84,7 +86,34 @@ class GoalCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              // AI Tip Button
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => showAiGoalTipDialog(
+                  context: context,
+                  goalName: goal.title,
+                  targetAmount: goal.targetAmount,
+                  goalId: goal.id,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primaryOrange.withValues(alpha: 0.15),
+                    border: Border.all(
+                      color: AppColors.primaryOrange.withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    size: 14,
+                    color: AppColors.amberAccent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
               // Status Badge
               _statusBadge(),
             ],

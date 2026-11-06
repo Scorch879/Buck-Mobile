@@ -22,6 +22,8 @@ import '../../goals/presentation/screens/goals_screen.dart';
 import '../../income/presentation/add_income_dialog.dart';
 import '../../stats/presentation/screens/stats_screen.dart';
 import '../../wallet/presentation/screens/wallet_screen.dart';
+import '../../ai/presentation/widgets/ai_report_dialog.dart';
+import '../../ai/presentation/widgets/ai_floating_chat_bubble.dart';
 
 /// Signed-in app frame: backdrop, header, active page, floating footer nav.
 class MainShell extends StatefulWidget {
@@ -327,7 +329,7 @@ class _MainShellState extends State<MainShell> {
                         snapshot: snapshot,
                         onQuickAction: _onQuickAction,
                         onRefresh: _finance.refresh,
-                        onOpenReport: () => _showComingSoon('Financial report'),
+                        onOpenReport: () => showAiReportDialog(context: context),
                         bottomInset: contentInset,
                       ),
                     ),
@@ -383,6 +385,11 @@ class _MainShellState extends State<MainShell> {
               activeTab: _tab,
               onTabSelected: _onTabSelected,
             ),
+          ),
+          Positioned(
+            right: 18,
+            bottom: footerBottom + BuckFooterNav.height + 12,
+            child: const AiFloatingChatBubble(),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/buck_overlay_dialog.dart';
+import '../../ai/data/services/buck_ai_service.dart';
 import '../../finance/data/finance_models.dart';
 import 'screens/receipt_scanner_screen.dart';
 
@@ -46,6 +47,7 @@ Future<bool> showAddExpenseDialog(
   required Future<void> Function(AddExpenseRequest request) onSubmit,
   VoidCallback? onScan,
   ScannedReceiptResult? initialReceipt,
+  BuckAiService? aiService,
 }) async {
   final saved = await showBuckOverlayDialog<bool>(
     context: context,
@@ -54,6 +56,7 @@ Future<bool> showAddExpenseDialog(
       onSubmit: onSubmit,
       onScan: onScan,
       initialReceipt: initialReceipt,
+      aiService: aiService,
     ),
   );
   return saved ?? false;
@@ -64,6 +67,7 @@ class AddExpenseDialog extends StatefulWidget {
   final Future<void> Function(AddExpenseRequest request) onSubmit;
   final VoidCallback? onScan;
   final ScannedReceiptResult? initialReceipt;
+  final BuckAiService? aiService;
 
   const AddExpenseDialog({
     super.key,
@@ -71,6 +75,7 @@ class AddExpenseDialog extends StatefulWidget {
     required this.onSubmit,
     this.onScan,
     this.initialReceipt,
+    this.aiService,
   });
 
   @override
@@ -85,7 +90,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   String? _category;
   DateTime _date = DateTime.now();
   bool _saving = false;
+  bool _autoCategorizing = false;
   String? _error;
+  late final BuckAiService _aiService = widget.aiService ?? BuckAiService();
 
   @override
   void initState() {
@@ -104,6 +111,42 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       _category = receipt.categoryName;
     } else {
       _category = 'Shopping';
+      if (receipt.description.trim().isNotEmpty) {
+        _autoCategorize(text: receipt.description);
+      }
+    }
+  }
+
+  Future<void> _autoCategorize({String? text}) async {
+    final desc = (text ?? _descriptionController.text).trim();
+    if (desc.isEmpty) return;
+
+    setState(() => _autoCategorizing = true);
+    try {
+      final categories = await _aiService.categorize(descriptions: [desc]);
+      if (categories.isNotEmpty && mounted) {
+        final predicted = categories.first.trim();
+        final match = expenseCategories.firstWhere(
+          (c) => c.toLowerCase() == predicted.toLowerCase(),
+          orElse: () {
+            for (final cat in expenseCategories) {
+              if (predicted.toLowerCase().contains(cat.toLowerCase()) ||
+                  cat.toLowerCase().contains(predicted.toLowerCase())) {
+                return cat;
+              }
+            }
+            return 'Other';
+          },
+        );
+        setState(() {
+          _category = match;
+          _error = null;
+        });
+      }
+    } catch (_) {
+      // Graceful fallback
+    } finally {
+      if (mounted) setState(() => _autoCategorizing = false);
     }
   }
 
@@ -218,7 +261,35 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     ],
                   ),
                 ),
-                _OverlayField(label: 'Category', child: _categoryField()),
+                _OverlayField(
+                  label: 'Category',
+                  trailing: _descriptionController.text.trim().isNotEmpty
+                      ? GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _autoCategorizing ? null : () => _autoCategorize(),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome,
+                                size: 13,
+                                color: AppColors.amberAccent,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'AI Detect',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.amberAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : null,
+                  child: _categoryField(),
+                ),
                 _OverlayField(
                   label: 'Date',
                   child: _InputBox(
@@ -241,6 +312,10 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                   child: _input(
                     controller: _descriptionController,
                     hint: 'Enter Description (optional)',
+                    onEditingComplete: () {
+                      _autoCategorize();
+                      FocusScope.of(context).unfocus();
+                    },
                   ),
                 ),
                 _submitButton(),
@@ -317,8 +392,20 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
           isExpanded: true,
           dropdownColor: AppColors.inputBg,
           borderRadius: BorderRadius.circular(12),
-          icon: SvgPicture.asset('assets/icons/select_chevron.svg'),
-          hint: Text('Enter Category', style: _hintStyle),
+          icon: _autoCategorizing
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primaryOrange,
+                  ),
+                )
+              : SvgPicture.asset('assets/icons/select_chevron.svg'),
+          hint: Text(
+            _autoCategorizing ? 'AI detecting category...' : 'Enter Category',
+            style: _hintStyle,
+          ),
           style: _valueStyle,
           items: [
             for (final cat in expenseCategories)
@@ -335,6 +422,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     required String hint,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
+    VoidCallback? onEditingComplete,
   }) {
     return _InputBox(
       child: TextField(
@@ -342,6 +430,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
         enabled: !_saving,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
+        onEditingComplete: onEditingComplete,
         style: _valueStyle,
         cursorColor: AppColors.primaryOrange,
         decoration: InputDecoration(
@@ -405,9 +494,14 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
 /// Label above a 56px input box (Figma "Field / …", 91px tall).
 class _OverlayField extends StatelessWidget {
   final String label;
+  final Widget? trailing;
   final Widget child;
 
-  const _OverlayField({required this.label, required this.child});
+  const _OverlayField({
+    required this.label,
+    this.trailing,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -415,14 +509,20 @@ class _OverlayField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 10,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            height: 20 / 14,
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 20 / 14,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
         ),
         child,
       ],
