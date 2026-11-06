@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../ai/data/services/buck_ai_service.dart';
 
 class AuthService {
   final SupabaseClient? _customClient;
@@ -82,6 +83,7 @@ class AuthService {
 
   /// Sign Out
   Future<void> signOut() async {
+    BuckAiService.instance.resetSessionState();
     if (SupabaseService.isInitialized) {
       await _client.auth.signOut();
     }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -29,6 +30,8 @@ class _AiChatSheetContent extends StatefulWidget {
 class _AiChatSheetContentState extends State<_AiChatSheetContent> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  StreamSubscription<String>? _activeStreamSub;
+  String? _activeAiMsgId;
   bool _isStreaming = false;
 
   static const _quickPrompts = [
@@ -43,6 +46,17 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
   @override
   void initState() {
     super.initState();
+    // Sanitize any stale streaming state from a previously dismissed sheet.
+    for (var i = 0; i < _messages.length; i++) {
+      if (_messages[i].isStreaming) {
+        _messages[i] = _messages[i].copyWith(
+          text: _messages[i].text.isEmpty
+              ? 'Response interrupted.'
+              : _messages[i].text,
+          isStreaming: false,
+        );
+      }
+    }
     if (_messages.isEmpty) {
       _messages.add(
         AiChatMessage(
@@ -58,6 +72,20 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
 
   @override
   void dispose() {
+    _activeStreamSub?.cancel();
+    _activeStreamSub = null;
+    if (_activeAiMsgId != null) {
+      final idx = _messages.indexWhere((m) => m.id == _activeAiMsgId);
+      if (idx != -1 && _messages[idx].isStreaming) {
+        _messages[idx] = _messages[idx].copyWith(
+          text: _messages[idx].text.isEmpty
+              ? 'Response interrupted.'
+              : _messages[idx].text,
+          isStreaming: false,
+        );
+      }
+      _activeAiMsgId = null;
+    }
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -113,6 +141,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
       isStreaming: true,
     );
 
+    _activeAiMsgId = aiMsgId;
     setState(() {
       _messages.add(userMsg);
       _messages.add(aiPlaceholder);
@@ -121,45 +150,61 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
     _scrollToBottom();
 
     final buffer = StringBuffer();
-    try {
-      await for (final delta in widget.aiService.streamChat(question)) {
+    final completer = Completer<void>();
+
+    _activeStreamSub = widget.aiService
+        .streamChat(question, history: List<AiChatMessage>.from(_messages))
+        .listen(
+      (delta) {
         buffer.write(delta);
+        final idx = _messages.indexWhere((m) => m.id == aiMsgId);
+        if (idx != -1) {
+          _messages[idx] = _messages[idx].copyWith(text: buffer.toString());
+        }
         if (mounted) {
-          setState(() {
-            final idx = _messages.indexWhere((m) => m.id == aiMsgId);
-            if (idx != -1) {
-              _messages[idx] = _messages[idx].copyWith(text: buffer.toString());
-            }
-          });
+          setState(() {});
           _scrollToBottom();
         }
-      }
-    } catch (e) {
-      final friendlyError = e is BuckAiException
-          ? e.message
-          : 'Sorry, I encountered an issue analyzing your finances. Please try again.';
-      if (mounted) {
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.id == aiMsgId);
-          if (idx != -1) {
-            _messages[idx] = _messages[idx].copyWith(
-              text: buffer.isEmpty ? friendlyError : buffer.toString(),
-              isStreaming: false,
-            );
-          }
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.id == aiMsgId);
-          if (idx != -1) {
-            _messages[idx] = _messages[idx].copyWith(isStreaming: false);
-          }
-          _isStreaming = false;
-        });
-        _scrollToBottom();
-      }
+      },
+      onError: (Object e) {
+        final friendlyError = e is BuckAiException
+            ? e.message
+            : 'Sorry, I encountered an issue analyzing your finances. Please try again.';
+        final idx = _messages.indexWhere((m) => m.id == aiMsgId);
+        if (idx != -1) {
+          _messages[idx] = _messages[idx].copyWith(
+            text: buffer.isEmpty ? friendlyError : buffer.toString(),
+            isStreaming: false,
+          );
+        }
+        if (!completer.isCompleted) completer.complete();
+      },
+      onDone: () {
+        if (!completer.isCompleted) completer.complete();
+      },
+      cancelOnError: true,
+    );
+
+    await completer.future;
+    _activeStreamSub = null;
+    if (_activeAiMsgId == aiMsgId) {
+      _activeAiMsgId = null;
+    }
+
+    final idx = _messages.indexWhere((m) => m.id == aiMsgId);
+    if (idx != -1) {
+      _messages[idx] = _messages[idx].copyWith(
+        text: _messages[idx].text.isEmpty
+            ? 'Sorry, I could not generate a response right now.'
+            : _messages[idx].text,
+        isStreaming: false,
+      );
+    }
+    if (mounted) {
+      setState(() {
+        _isStreaming = false;
+      });
+      _scrollToBottom();
     }
   }
 
@@ -524,13 +569,13 @@ class AiMarkdownText extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('•  ', style: boldStyle),
-                Expanded(child: RichText(text: TextSpan(children: spans))),
+                Expanded(child: Text.rich(TextSpan(children: spans))),
               ],
             ),
           ),
         );
       } else {
-        children.add(RichText(text: TextSpan(children: spans)));
+        children.add(Text.rich(TextSpan(children: spans)));
       }
     }
 

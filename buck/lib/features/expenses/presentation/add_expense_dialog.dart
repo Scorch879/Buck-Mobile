@@ -11,16 +11,7 @@ import '../../finance/data/finance_models.dart';
 import 'screens/receipt_scanner_screen.dart';
 
 /// Categories offered in the Category field for spending.
-const expenseCategories = [
-  'Food',
-  'Transportation',
-  'Shopping',
-  'Bills & Utilities',
-  'Entertainment',
-  'Health & Wellness',
-  'Education',
-  'Other',
-];
+const List<String> expenseCategories = mobileExpenseCategories;
 
 /// Values submitted by the Add Expense / Spending form.
 class AddExpenseRequest {
@@ -130,10 +121,16 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     final desc = (text ?? _descriptionController.text).trim();
     if (desc.isEmpty) return;
 
+    final categoryBeforeRequest = _category;
     setState(() => _autoCategorizing = true);
     try {
       final categories = await _aiService.categorize(descriptions: [desc]);
       if (categories.isNotEmpty && mounted) {
+        // Respect any manual category selection made while the request was in flight.
+        if ((onlyIfUnset && _category != null) ||
+            _category != categoryBeforeRequest) {
+          return;
+        }
         final mapped = BuckAiService.mapToMobileCategory(
           categories.first,
           fallbackDescription: desc,

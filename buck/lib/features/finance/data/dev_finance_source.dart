@@ -1,8 +1,54 @@
+import '../../ai/data/models/ai_insight_response.dart';
 import 'finance_models.dart';
 import 'finance_repository.dart';
 
 /// Pre-populated dev finance source matching the Figma design data.
 class DevFinanceSource implements FinanceDataSource {
+  /// Simulated Buck AI financial insight report for Dev Mode sessions.
+  static AiInsightResponse mockInsight({bool refreshed = false}) {
+    final now = DateTime.now();
+    return AiInsightResponse(
+      id: 'dev-insight-001',
+      title: 'Steady Weekly Pacing',
+      suggestion:
+          'Keep daily spending under ₱1,200.00 to stay on track for your Emergency Fund goal.',
+      advice:
+          'In Dev Mode, your simulated monthly spending is ₱14,850.00 against ₱45,000.00 in tracked income. '
+          'Your current savings rate is 67%, which comfortably supports your Moderate saving attitude. '
+          'Setting aside ₱2,500.00 per week will keep your Emergency Fund ahead of schedule.',
+      financialHealthScore: 84,
+      priority: 'low',
+      focus: 'savings',
+      walletAdvice:
+          'Use your Main Wallet for everyday expenses while keeping your Savings wallet untouched as your goal buffer.',
+      period: AiPeriod(
+        asOf:
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+        monthStart: '${now.year}-${now.month.toString().padLeft(2, '0')}-01',
+      ),
+      generatedWith: 'dev-preview',
+      createdAt: now.toIso8601String(),
+      cached: !refreshed,
+      stale: false,
+    );
+  }
+
+  /// Simulated Buck AI goal tip for Dev Mode sessions.
+  static String mockGoalTip({String? goalName, double? targetAmount}) {
+    final name =
+        (goalName != null && goalName.isNotEmpty) ? goalName : 'your goal';
+    final amount = (targetAmount != null && targetAmount > 0)
+        ? '₱${(targetAmount / 12).toStringAsFixed(2)}'
+        : 'a fixed amount';
+    return 'To reach $name steadily, automate a monthly transfer of $amount right after payday and keep it in a dedicated savings wallet.';
+  }
+
+  /// Simulated Buck AI advisor chat response for Dev Mode sessions.
+  static const String mockChatReply =
+      'Based on your **Dev Mode** snapshot, your daily spending cap is **₱1,200.00** per day.\n\n'
+      '- Current monthly spend: **₱14,850.00**\n'
+      '- Recommended weekly saving: **₱2,500.00** toward your Emergency Fund';
+
   FinanceData _data = FinanceData(
     profileName: 'Admin',
     activeWalletId: 'wallet-main',

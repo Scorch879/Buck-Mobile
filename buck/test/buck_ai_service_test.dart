@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:buck/core/constants/dev_config.dart';
+import 'package:buck/features/ai/data/models/ai_chat_message.dart';
 import 'package:buck/features/ai/data/models/ai_insight_response.dart';
 import 'package:buck/features/ai/data/services/buck_ai_service.dart';
 import 'package:buck/features/ai/presentation/screens/ai_chat_sheet.dart';
@@ -180,6 +182,116 @@ void main() {
       final cats = await service.categorize(descriptions: ['Shell gas station']);
       expect(cats, ['Transportation']);
     });
+
+    test('mapToMobileCategory uses whole-word boundaries and avoids substring false positives', () {
+      expect(
+        BuckAiService.mapToMobileCategory('', fallbackDescription: 'Business consulting fee'),
+        'Other',
+      );
+      expect(
+        BuckAiService.mapToMobileCategory('', fallbackDescription: 'Facebook Ads boost'),
+        'Other',
+      );
+      expect(
+        BuckAiService.mapToMobileCategory('', fallbackDescription: 'Parent allowance'),
+        'Other',
+      );
+      expect(
+        BuckAiService.mapToMobileCategory('', fallbackDescription: 'Bus ticket to work'),
+        'Transportation',
+      );
+      expect(
+        BuckAiService.mapToMobileCategory('', fallbackDescription: 'Clean Code book'),
+        'Education',
+      );
+    });
+
+    test('resetSessionState clears chatHistory and lastRegeneratedAt', () {
+      final service = BuckAiService(
+        client: _FakeHttpClient((_) async => http.Response('{}', 200)),
+      );
+      service.chatHistory.add(
+        AiChatMessage(
+          id: '1',
+          text: 'Secret question',
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+      );
+      service.lastRegeneratedAt = DateTime.now();
+
+      service.resetSessionState();
+
+      expect(service.chatHistory, isEmpty);
+      expect(service.lastRegeneratedAt, isNull);
+    });
+
+    test('streamChat throws BuckAiException on idle stream timeout', () async {
+      final controller = StreamController<List<int>>();
+      addTearDown(controller.close);
+
+      final fakeClient = _FakeHttpClient.chunked((_) async {
+        controller.add(utf8.encode('data: {"type": "delta", "text": "Part 1"}\n\n'));
+        // Never emit 'done' or close controller so stream stalls.
+        return http.StreamedResponse(
+          controller.stream,
+          200,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      });
+
+      final service = BuckAiService(
+        client: fakeClient,
+        requestTimeout: const Duration(milliseconds: 50),
+      );
+
+      expect(
+        () => service.streamChat('Hello', token: 'test_token').toList(),
+        throwsA(
+          isA<BuckAiException>().having(
+            (e) => e.message,
+            'message',
+            contains('timed out'),
+          ),
+        ),
+      );
+    });
+
+    test('streamChat includes recent conversation turns on follow-up questions', () async {
+      String? sentQuestion;
+      final fakeClient = _FakeHttpClient.chunked((request) async {
+        final body = jsonDecode((request as http.Request).body) as Map<String, dynamic>;
+        sentQuestion = body['question'] as String?;
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('data: {"type": "done"}\n\n')),
+          200,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      });
+
+      final service = BuckAiService(client: fakeClient);
+      service.chatHistory.addAll([
+        AiChatMessage(
+          id: 'u1',
+          text: 'What is my daily spending limit?',
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+        AiChatMessage(
+          id: 'a1',
+          text: 'Your daily spending limit is ₱1,200.',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      ]);
+
+      await service.streamChat('What about next week?', token: 'test_token').toList();
+
+      expect(sentQuestion, contains('Previous conversation:'));
+      expect(sentQuestion, contains('User: What is my daily spending limit?'));
+      expect(sentQuestion, contains('Advisor: Your daily spending limit is ₱1,200.'));
+      expect(sentQuestion, contains('Current question: What about next week?'));
+    });
   });
 
   group('Buck AI Widget Tests', () {
@@ -292,6 +404,54 @@ void main() {
       expect(find.text('—'), findsOneWidget);
       expect(find.text('Unscored'), findsOneWidget);
       expect(find.textContaining('Regenerate ('), findsOneWidget);
+    });
+
+    testWidgets('Closing AiChatSheet mid-stream finalizes message so reopening is not stuck', (tester) async {
+      final streamController = StreamController<List<int>>();
+      addTearDown(streamController.close);
+
+      final fakeClient = _FakeHttpClient.chunked((_) async {
+        return http.StreamedResponse(
+          streamController.stream,
+          200,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      });
+      final aiService = BuckAiService(client: fakeClient);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (ctx) => ElevatedButton(
+                onPressed: () => showAiChatSheet(ctx, aiService: aiService),
+                child: const Text('Open Chat'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Chat'));
+      await tester.pumpAndSettle();
+
+      // Tap a quick prompt to start streaming
+      await tester.tap(find.text('How is my spending looking this month?'));
+      await tester.pump();
+
+      expect(find.text('Buck AI is thinking...'), findsOneWidget);
+
+      // Dismiss the sheet mid-stream via the close button
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      // Verify no message in chatHistory is stuck with isStreaming == true
+      expect(aiService.chatHistory.any((m) => m.isStreaming), isFalse);
+
+      // Reopen the sheet and verify 'Buck AI is thinking...' is not stuck
+      await tester.tap(find.text('Open Chat'));
+      await tester.pumpAndSettle();
+      expect(find.text('Buck AI is thinking...'), findsNothing);
     });
   });
 }

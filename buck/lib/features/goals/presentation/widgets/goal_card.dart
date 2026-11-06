@@ -120,7 +120,6 @@ class GoalCard extends StatelessWidget {
               const SizedBox(width: 4),
               // Status Badge
               Flexible(
-                flex: 0,
                 child: _statusBadge(),
               ),
             ],
@@ -268,6 +267,8 @@ class GoalCard extends StatelessWidget {
           ),
           child: Text(
             'On Track',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.manrope(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -287,12 +288,16 @@ class GoalCard extends StatelessWidget {
             children: [
               Icon(Icons.star_rounded, size: 14, color: goal.themeColor),
               const SizedBox(width: 4),
-              Text(
-                'Completed!',
-                style: GoogleFonts.manrope(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: goal.themeColor,
+              Flexible(
+                child: Text(
+                  'Completed!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: goal.themeColor,
+                  ),
                 ),
               ),
             ],
@@ -307,6 +312,8 @@ class GoalCard extends StatelessWidget {
           ),
           child: Text(
             'In Progress',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.manrope(
               fontSize: 11,
               fontWeight: FontWeight.w600,

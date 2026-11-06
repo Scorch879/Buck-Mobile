@@ -33,8 +33,23 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble> {
           onTapUp: (_) => setState(() => _pressed = false),
           onTap: widget.onTap ?? () => showAiChatSheet(context),
           onPanUpdate: (details) {
+            final screenSize = MediaQuery.sizeOf(context);
+            final safePadding = MediaQuery.paddingOf(context);
+            const bubbleSize = 52.0;
+            final minDx = -(screenSize.width - bubbleSize - 26.0)
+                .clamp(0.0, double.infinity);
+            const maxDx = 10.0;
+            final minDy =
+                -(screenSize.height - bubbleSize - safePadding.top - 140.0)
+                    .clamp(0.0, double.infinity);
+            const maxDy = 60.0;
+
             setState(() {
-              _dragOffset += details.delta;
+              final next = _dragOffset + details.delta;
+              _dragOffset = Offset(
+                next.dx.clamp(minDx, maxDx),
+                next.dy.clamp(minDy, maxDy),
+              );
             });
           },
           child: AnimatedScale(
