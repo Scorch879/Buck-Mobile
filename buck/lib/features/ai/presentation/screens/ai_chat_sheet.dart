@@ -12,7 +12,7 @@ Future<void> showAiChatSheet(BuildContext context, {BuckAiService? aiService}) {
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => _AiChatSheetContent(
-      aiService: aiService ?? BuckAiService(),
+      aiService: aiService ?? BuckAiService.instance,
     ),
   );
 }
@@ -27,7 +27,6 @@ class _AiChatSheetContent extends StatefulWidget {
 }
 
 class _AiChatSheetContentState extends State<_AiChatSheetContent> {
-  final List<AiChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isStreaming = false;
@@ -39,17 +38,22 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
     'Give me advice to reach my goals',
   ];
 
+  List<AiChatMessage> get _messages => widget.aiService.chatHistory;
+
   @override
   void initState() {
     super.initState();
-    _messages.add(
-      AiChatMessage(
-        id: 'initial',
-        text: 'Hello! I am your Buck AI Financial Advisor. Ask me anything about your spending, budget, or financial goals.',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
-    );
+    if (_messages.isEmpty) {
+      _messages.add(
+        AiChatMessage(
+          id: 'initial',
+          text:
+              'Hello! I am your **Buck AI Financial Advisor**. Ask me anything about your spending, budget, or financial goals.',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
   }
 
   @override
@@ -68,6 +72,22 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
           curve: Curves.easeOutCubic,
         );
       }
+    });
+  }
+
+  void _resetChat() {
+    if (_isStreaming) return;
+    setState(() {
+      widget.aiService.clearChatHistory();
+      _messages.add(
+        AiChatMessage(
+          id: 'initial',
+          text:
+              'Hello! I am your **Buck AI Financial Advisor**. Ask me anything about your spending, budget, or financial goals.',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
     });
   }
 
@@ -115,14 +135,15 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
         }
       }
     } catch (e) {
+      final friendlyError = e is BuckAiException
+          ? e.message
+          : 'Sorry, I encountered an issue analyzing your finances. Please try again.';
       if (mounted) {
         setState(() {
           final idx = _messages.indexWhere((m) => m.id == aiMsgId);
           if (idx != -1) {
             _messages[idx] = _messages[idx].copyWith(
-              text: buffer.isEmpty
-                  ? 'Sorry, I encountered an issue analyzing your finances: ${e.toString().replaceFirst('Exception: ', '')}'
-                  : buffer.toString(),
+              text: buffer.isEmpty ? friendlyError : buffer.toString(),
               isStreaming: false,
             );
           }
@@ -251,6 +272,16 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
               ],
             ),
           ),
+          if (_messages.length > 1)
+            IconButton(
+              tooltip: 'Clear chat',
+              icon: const Icon(
+                Icons.refresh,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
+              onPressed: _isStreaming ? null : _resetChat,
+            ),
           IconButton(
             icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
             onPressed: () => Navigator.of(context).pop(),
@@ -273,9 +304,9 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
               width: 26,
               height: 26,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [
                     AppColors.gradientOrangeStart,
                     AppColors.gradientOrangeEnd,
@@ -325,15 +356,17 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
                         ),
                       ],
                     )
-                  : Text(
-                      msg.text,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: Colors.white,
-                        fontWeight: isUser ? FontWeight.w500 : FontWeight.w400,
-                      ),
-                    ),
+                  : isUser
+                      ? Text(
+                          msg.text,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        )
+                      : AiMarkdownText(text: msg.text),
             ),
           ),
         ],
@@ -429,5 +462,124 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
         ],
       ),
     );
+  }
+}
+
+/// Lightweight inline markdown renderer for AI chat responses.
+///
+/// Supports `**bold**`, `*italic*`, `` `code` ``, and bulleted list lines (`- ` or `* `).
+class AiMarkdownText extends StatelessWidget {
+  final String text;
+
+  const AiMarkdownText({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = GoogleFonts.inter(
+      fontSize: 13,
+      height: 1.48,
+      color: Colors.white,
+      fontWeight: FontWeight.w400,
+    );
+    final boldStyle = baseStyle.copyWith(
+      fontWeight: FontWeight.w700,
+      color: AppColors.lightPeach,
+    );
+    final italicStyle = baseStyle.copyWith(fontStyle: FontStyle.italic);
+    final codeStyle = GoogleFonts.jetBrainsMono(
+      fontSize: 12,
+      color: AppColors.peachAccent,
+      backgroundColor: const Color(0xFF160B06),
+    );
+
+    final lines = text.split('\n');
+    final children = <Widget>[];
+
+    for (var i = 0; i < lines.length; i++) {
+      final rawLine = lines[i];
+      final trimmed = rawLine.trimLeft();
+      if (trimmed.isEmpty) {
+        if (i > 0 && i < lines.length - 1) {
+          children.add(const SizedBox(height: 6));
+        }
+        continue;
+      }
+
+      final isBullet = trimmed.startsWith('- ') || trimmed.startsWith('* ');
+      final content = isBullet ? trimmed.substring(2) : rawLine;
+
+      final spans = _parseInlineSpans(
+        content,
+        baseStyle: baseStyle,
+        boldStyle: boldStyle,
+        italicStyle: italicStyle,
+        codeStyle: codeStyle,
+      );
+
+      if (isBullet) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('•  ', style: boldStyle),
+                Expanded(child: RichText(text: TextSpan(children: spans))),
+              ],
+            ),
+          ),
+        );
+      } else {
+        children.add(RichText(text: TextSpan(children: spans)));
+      }
+    }
+
+    if (children.isEmpty) {
+      return Text(text, style: baseStyle);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+  }
+
+  static List<TextSpan> _parseInlineSpans(
+    String input, {
+    required TextStyle baseStyle,
+    required TextStyle boldStyle,
+    required TextStyle italicStyle,
+    required TextStyle codeStyle,
+  }) {
+    final spans = <TextSpan>[];
+    final tokenRegex = RegExp(r'\*\*(.+?)\*\*|`([^`]+)`|\*([^*]+)\*');
+    var lastIndex = 0;
+
+    for (final match in tokenRegex.allMatches(input)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: input.substring(lastIndex, match.start),
+          style: baseStyle,
+        ));
+      }
+      if (match.group(1) != null) {
+        spans.add(TextSpan(text: match.group(1), style: boldStyle));
+      } else if (match.group(2) != null) {
+        spans.add(TextSpan(text: match.group(2), style: codeStyle));
+      } else if (match.group(3) != null) {
+        spans.add(TextSpan(text: match.group(3), style: italicStyle));
+      }
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < input.length) {
+      spans.add(TextSpan(
+        text: input.substring(lastIndex),
+        style: baseStyle,
+      ));
+    }
+
+    return spans;
   }
 }

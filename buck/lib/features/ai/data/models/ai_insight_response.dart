@@ -15,7 +15,7 @@ class AiInsightResponse {
   final String title;
   final String suggestion;
   final String advice;
-  final int financialHealthScore;
+  final int? financialHealthScore;
   final String priority;
   final String focus;
   final String walletAdvice;
@@ -30,7 +30,7 @@ class AiInsightResponse {
     required this.title,
     required this.suggestion,
     required this.advice,
-    required this.financialHealthScore,
+    this.financialHealthScore,
     required this.priority,
     required this.focus,
     required this.walletAdvice,
@@ -47,7 +47,7 @@ class AiInsightResponse {
         title: (json['title'] as String?) ?? 'Financial Strategy',
         suggestion: (json['suggestion'] as String?) ?? '',
         advice: (json['advice'] as String?) ?? '',
-        financialHealthScore: (json['financialHealthScore'] as num?)?.toInt() ?? 80,
+        financialHealthScore: (json['financialHealthScore'] as num?)?.toInt(),
         priority: (json['priority'] as String?) ?? 'medium',
         focus: (json['focus'] as String?) ?? 'spending',
         walletAdvice: (json['walletAdvice'] as String?) ?? '',

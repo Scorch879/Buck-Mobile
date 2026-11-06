@@ -18,7 +18,7 @@ Future<void> showAiGoalTipDialog({
       goalName: goalName,
       targetAmount: targetAmount,
       goalId: goalId,
-      aiService: aiService ?? BuckAiService(),
+      aiService: aiService ?? BuckAiService.instance,
     ),
   );
 }
@@ -65,14 +65,18 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
       );
       if (mounted) {
         setState(() {
-          _tip = tip ?? 'Set aside a consistent monthly amount into your designated savings wallet to stay on track.';
+          _tip = tip ??
+              'Set aside a consistent monthly amount into your designated savings wallet to stay on track.';
           _loading = false;
         });
       }
     } catch (e) {
+      final friendly = e is BuckAiException
+          ? e.message
+          : 'Unable to get AI tip right now.';
       if (mounted) {
         setState(() {
-          _error = 'Unable to get AI tip right now.';
+          _error = friendly;
           _loading = false;
         });
       }
@@ -106,9 +110,9 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
                     width: 32,
                     height: 32,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [
                           AppColors.gradientOrangeStart,
                           AppColors.gradientOrangeEnd,

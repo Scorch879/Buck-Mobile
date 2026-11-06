@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,12 +13,14 @@ Future<void> showAiReportDialog({
   required BuildContext context,
   AiInsightResponse? initialInsight,
   BuckAiService? aiService,
+  VoidCallback? onInsightUpdated,
 }) {
   return showBuckOverlayDialog<void>(
     context: context,
     builder: (ctx) => _AiReportDialogContent(
       initialInsight: initialInsight,
-      aiService: aiService ?? BuckAiService(),
+      aiService: aiService ?? BuckAiService.instance,
+      onInsightUpdated: onInsightUpdated,
     ),
   );
 }
@@ -25,10 +28,12 @@ Future<void> showAiReportDialog({
 class _AiReportDialogContent extends StatefulWidget {
   final AiInsightResponse? initialInsight;
   final BuckAiService aiService;
+  final VoidCallback? onInsightUpdated;
 
   const _AiReportDialogContent({
     this.initialInsight,
     required this.aiService,
+    this.onInsightUpdated,
   });
 
   @override
@@ -39,16 +44,45 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
   late AiInsightResponse? _insight = widget.initialInsight;
   bool _loading = false;
   String? _errorMessage;
+  Timer? _cooldownTimer;
+  int _cooldownSeconds = 0;
 
   @override
   void initState() {
     super.initState();
+    _syncCooldown();
     if (_insight == null) {
       _loadReport(refresh: false);
     }
   }
 
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncCooldown() {
+    _cooldownTimer?.cancel();
+    _cooldownSeconds = widget.aiService.remainingCooldownSeconds;
+    if (_cooldownSeconds > 0) {
+      _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        final remaining = widget.aiService.remainingCooldownSeconds;
+        setState(() => _cooldownSeconds = remaining);
+        if (remaining <= 0) {
+          timer.cancel();
+        }
+      });
+    }
+  }
+
   Future<void> _loadReport({required bool refresh}) async {
+    if (refresh && _cooldownSeconds > 0) return;
+
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -61,24 +95,31 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
           _insight = res;
           _loading = false;
         });
+        _syncCooldown();
+        widget.onInsightUpdated?.call();
       }
     } catch (e) {
+      final friendly = e is BuckAiException
+          ? e.message
+          : 'Unable to load your financial report right now. Please try again.';
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _errorMessage = friendly;
           _loading = false;
         });
       }
     }
   }
 
-  Color _getScoreColor(int score) {
+  Color _getScoreColor(int? score) {
+    if (score == null) return AppColors.textSecondary;
     if (score >= 80) return AppColors.savingsGreen;
     if (score >= 60) return AppColors.amberAccent;
     return AppColors.expensePink;
   }
 
-  String _getScoreLabel(int score) {
+  String _getScoreLabel(int? score) {
+    if (score == null) return 'Unscored';
     if (score >= 80) return 'Optimal';
     if (score >= 60) return 'Moderate';
     return 'Attention Needed';
@@ -222,7 +263,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => _loadReport(refresh: true),
+              onPressed: () => _loadReport(refresh: false),
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('Try Again'),
               style: ElevatedButton.styleFrom(
@@ -238,7 +279,9 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
   }
 
   Widget _buildReportBody(AiInsightResponse report) {
-    final scoreColor = _getScoreColor(report.financialHealthScore);
+    final score = report.financialHealthScore;
+    final scoreColor = _getScoreColor(score);
+    final canRegenerate = !_loading && _cooldownSeconds <= 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -263,7 +306,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  '${report.financialHealthScore}',
+                  score != null ? '$score' : '—',
                   style: GoogleFonts.manrope(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -277,17 +320,22 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'FINANCIAL SCORE',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            color: AppColors.textSecondary,
+                        Flexible(
+                          child: Text(
+                            'FINANCIAL SCORE',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -295,7 +343,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            _getScoreLabel(report.financialHealthScore),
+                            _getScoreLabel(score),
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -415,32 +463,43 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
 
         // 5. Metadata & Refresh Controls
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF231610),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'AI: ${report.generatedWith}',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF231610),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'AI: ${report.generatedWith}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             TextButton.icon(
-              onPressed: _loading ? null : () => _loadReport(refresh: true),
-              icon: const Icon(Icons.refresh, size: 14, color: AppColors.primaryOrange),
+              onPressed: canRegenerate ? () => _loadReport(refresh: true) : null,
+              icon: Icon(
+                Icons.refresh,
+                size: 14,
+                color: canRegenerate ? AppColors.primaryOrange : AppColors.textSecondary,
+              ),
               label: Text(
-                'Regenerate',
+                _cooldownSeconds > 0
+                    ? 'Regenerate (${_cooldownSeconds}s)'
+                    : 'Regenerate',
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primaryOrange,
+                  color: canRegenerate ? AppColors.primaryOrange : AppColors.textSecondary,
                 ),
               ),
             ),

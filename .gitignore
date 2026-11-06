@@ -120,3 +120,5 @@ app.*.symbols
 # Local secrets (shared with web; never commit)
 .env
 .env.*
+
+!.env.example

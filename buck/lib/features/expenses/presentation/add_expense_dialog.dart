@@ -92,7 +92,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   bool _saving = false;
   bool _autoCategorizing = false;
   String? _error;
-  late final BuckAiService _aiService = widget.aiService ?? BuckAiService();
+  late final BuckAiService _aiService = widget.aiService ?? BuckAiService.instance;
 
   @override
   void initState() {
@@ -110,14 +110,23 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     if (expenseCategories.contains(receipt.categoryName)) {
       _category = receipt.categoryName;
     } else {
-      _category = 'Shopping';
-      if (receipt.description.trim().isNotEmpty) {
-        _autoCategorize(text: receipt.description);
+      final desc = receipt.description.trim();
+      final isPlaceholderScan = desc.toLowerCase().startsWith('scanned receipt');
+      if (desc.isNotEmpty && !isPlaceholderScan) {
+        _category = BuckAiService.mapToMobileCategory(
+          receipt.categoryName,
+          fallbackDescription: desc,
+        );
+        _autoCategorize(text: desc, onlyIfUnset: false);
+      } else {
+        _category = 'Shopping';
       }
     }
   }
 
-  Future<void> _autoCategorize({String? text}) async {
+  Future<void> _autoCategorize({String? text, bool onlyIfUnset = false}) async {
+    if (onlyIfUnset && _category != null) return;
+
     final desc = (text ?? _descriptionController.text).trim();
     if (desc.isEmpty) return;
 
@@ -125,21 +134,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     try {
       final categories = await _aiService.categorize(descriptions: [desc]);
       if (categories.isNotEmpty && mounted) {
-        final predicted = categories.first.trim();
-        final match = expenseCategories.firstWhere(
-          (c) => c.toLowerCase() == predicted.toLowerCase(),
-          orElse: () {
-            for (final cat in expenseCategories) {
-              if (predicted.toLowerCase().contains(cat.toLowerCase()) ||
-                  cat.toLowerCase().contains(predicted.toLowerCase())) {
-                return cat;
-              }
-            }
-            return 'Other';
-          },
+        final mapped = BuckAiService.mapToMobileCategory(
+          categories.first,
+          fallbackDescription: desc,
         );
         setState(() {
-          _category = match;
+          _category = mapped;
           _error = null;
         });
       }
@@ -261,34 +261,42 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     ],
                   ),
                 ),
-                _OverlayField(
-                  label: 'Category',
-                  trailing: _descriptionController.text.trim().isNotEmpty
-                      ? GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: _autoCategorizing ? null : () => _autoCategorize(),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.auto_awesome,
-                                size: 13,
-                                color: AppColors.amberAccent,
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _descriptionController,
+                  builder: (context, descValue, _) {
+                    final hasDesc = descValue.text.trim().isNotEmpty;
+                    return _OverlayField(
+                      label: 'Category',
+                      trailing: hasDesc
+                          ? GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _autoCategorizing
+                                  ? null
+                                  : () => _autoCategorize(onlyIfUnset: false),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.auto_awesome,
+                                    size: 13,
+                                    color: AppColors.amberAccent,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'AI Detect',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.amberAccent,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'AI Detect',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.amberAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : null,
-                  child: _categoryField(),
+                            )
+                          : null,
+                      child: _categoryField(),
+                    );
+                  },
                 ),
                 _OverlayField(
                   label: 'Date',
@@ -313,7 +321,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                     controller: _descriptionController,
                     hint: 'Enter Description (optional)',
                     onEditingComplete: () {
-                      _autoCategorize();
+                      _autoCategorize(onlyIfUnset: true);
                       FocusScope.of(context).unfocus();
                     },
                   ),

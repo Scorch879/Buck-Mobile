@@ -140,7 +140,7 @@ class _AiAdvisoryBannerState extends State<AiAdvisoryBanner> {
     return [
       if (widget.insights.isEmpty)
         Text(
-          'No insights yet. Generate them in the Financial Advisor on Buck web.',
+          'No insights yet. Tap below to generate your financial report with Buck AI.',
           style: bodyStyle.copyWith(color: AppColors.textSecondary),
         ),
       for (final insight in widget.insights) Text(insight, style: bodyStyle),

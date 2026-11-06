@@ -329,7 +329,10 @@ class _MainShellState extends State<MainShell> {
                         snapshot: snapshot,
                         onQuickAction: _onQuickAction,
                         onRefresh: _finance.refresh,
-                        onOpenReport: () => showAiReportDialog(context: context),
+                        onOpenReport: () => showAiReportDialog(
+                          context: context,
+                          onInsightUpdated: _finance.refresh,
+                        ),
                         bottomInset: contentInset,
                       ),
                     ),

@@ -86,36 +86,43 @@ class GoalCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               // AI Tip Button
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => showAiGoalTipDialog(
-                  context: context,
-                  goalName: goal.title,
-                  targetAmount: goal.targetAmount,
-                  goalId: goal.id,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primaryOrange.withValues(alpha: 0.15),
-                    border: Border.all(
-                      color: AppColors.primaryOrange.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
+              Semantics(
+                button: true,
+                label: 'AI Goal Tip',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => showAiGoalTipDialog(
+                    context: context,
+                    goalName: goal.title,
+                    targetAmount: goal.targetAmount,
+                    goalId: goal.id,
                   ),
-                  child: const Icon(
-                    Icons.auto_awesome,
-                    size: 14,
-                    color: AppColors.amberAccent,
+                  child: Container(
+                    padding: EdgeInsets.all(isCompact ? 5 : 6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primaryOrange.withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: AppColors.primaryOrange.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      size: isCompact ? 12 : 14,
+                      color: AppColors.amberAccent,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               // Status Badge
-              _statusBadge(),
+              Flexible(
+                flex: 0,
+                child: _statusBadge(),
+              ),
             ],
           ),
           const SizedBox(height: 14),
