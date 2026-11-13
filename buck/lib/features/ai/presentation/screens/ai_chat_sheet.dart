@@ -173,7 +173,9 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
         final idx = _messages.indexWhere((m) => m.id == aiMsgId);
         if (idx != -1) {
           _messages[idx] = _messages[idx].copyWith(
-            text: buffer.isEmpty ? friendlyError : buffer.toString(),
+            text: buffer.isEmpty
+                ? friendlyError
+                : '${buffer.toString()}\n\n*($friendlyError)*',
             isStreaming: false,
           );
         }

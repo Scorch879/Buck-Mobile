@@ -56,7 +56,8 @@ class BuckAiException implements Exception {
 /// Sends user queries with the user's Supabase JWT access token for
 /// authenticated, RLS-bounded AI analytics and financial advisory.
 class BuckAiService {
-  static const Duration _defaultRequestTimeout = Duration(seconds: 20);
+  static const Duration _defaultRequestTimeout = Duration(seconds: 45);
+  static const Duration _defaultStreamTimeout = Duration(seconds: 60);
   static const Duration regenerateCooldown = Duration(seconds: 60);
 
   /// Shared singleton instance so widgets do not leak [http.Client] instances.
@@ -64,11 +65,13 @@ class BuckAiService {
     http.Client(),
     ownsClient: false,
     requestTimeout: _defaultRequestTimeout,
+    streamTimeout: _defaultStreamTimeout,
   );
 
   final http.Client _client;
   final bool _ownsClient;
   final Duration _requestTimeout;
+  final Duration _streamTimeout;
 
   /// Session-scoped chat message history preserved across sheet opens.
   final List<AiChatMessage> chatHistory = [];
@@ -80,17 +83,24 @@ class BuckAiService {
     this._client, {
     required bool ownsClient,
     required Duration requestTimeout,
+    required Duration streamTimeout,
   })  : _ownsClient = ownsClient,
-        _requestTimeout = requestTimeout;
+        _requestTimeout = requestTimeout,
+        _streamTimeout = streamTimeout;
 
   /// Creates an isolated [BuckAiService] instance.
   ///
   /// Prefer [BuckAiService.instance] in production widgets to share session state
   /// and avoid creating extra [http.Client] instances.
-  BuckAiService({http.Client? client, Duration? requestTimeout})
-      : _client = client ?? http.Client(),
+  BuckAiService({
+    http.Client? client,
+    Duration? requestTimeout,
+    Duration? streamTimeout,
+  })  : _client = client ?? http.Client(),
         _ownsClient = true,
-        _requestTimeout = requestTimeout ?? _defaultRequestTimeout;
+        _requestTimeout = requestTimeout ?? _defaultRequestTimeout,
+        _streamTimeout =
+            streamTimeout ?? requestTimeout ?? _defaultStreamTimeout;
 
   bool get _isDevMockSession => DevConfig.mockAdminSessionActive.value;
 
@@ -434,7 +444,7 @@ class BuckAiService {
 
           final http.StreamedResponse streamedResponse;
           try {
-            streamedResponse = await _client.send(request).timeout(_requestTimeout);
+            streamedResponse = await _client.send(request).timeout(_streamTimeout);
           } on TimeoutException {
             if (!isCancelled && !controller.isClosed) {
               controller.addError(const BuckAiException(
@@ -467,7 +477,7 @@ class BuckAiService {
           }
 
           final lineStream = streamedResponse.stream
-              .timeout(_requestTimeout)
+              .timeout(_streamTimeout)
               .transform(utf8.decoder)
               .transform(const LineSplitter());
 
