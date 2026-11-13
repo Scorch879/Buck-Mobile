@@ -389,10 +389,10 @@ class _MainShellState extends State<MainShell> {
               onTabSelected: _onTabSelected,
             ),
           ),
-          Positioned(
-            right: 18,
-            bottom: footerBottom + BuckFooterNav.height + 12,
-            child: const AiFloatingChatBubble(),
+          Positioned.fill(
+            child: AiFloatingChatBubble(
+              bottomRestOffset: footerBottom + BuckFooterNav.height + 12,
+            ),
           ),
         ],
       ),

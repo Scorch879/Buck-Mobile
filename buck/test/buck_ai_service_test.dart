@@ -8,6 +8,7 @@ import 'package:buck/features/ai/data/models/ai_chat_message.dart';
 import 'package:buck/features/ai/data/models/ai_insight_response.dart';
 import 'package:buck/features/ai/data/services/buck_ai_service.dart';
 import 'package:buck/features/ai/presentation/screens/ai_chat_sheet.dart';
+import 'package:buck/features/ai/presentation/widgets/ai_floating_chat_bubble.dart';
 import 'package:buck/features/ai/presentation/widgets/ai_report_dialog.dart';
 import 'package:buck/features/expenses/presentation/add_expense_dialog.dart';
 import 'package:buck/features/finance/data/finance_models.dart';
@@ -452,6 +453,54 @@ void main() {
       await tester.tap(find.text('Open Chat'));
       await tester.pumpAndSettle();
       expect(find.text('Buck AI is thinking...'), findsNothing);
+    });
+
+    testWidgets('AiFloatingChatBubble eases to closest horizontal edge on release', (tester) async {
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: AiFloatingChatBubble(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final visualBubbleFinder = find.descendant(
+        of: find.byType(AiFloatingChatBubble),
+        matching: find.byType(GestureDetector),
+      );
+      expect(tester.getCenter(visualBubbleFinder).dx, closeTo(756.0, 0.5));
+
+      // Drag into the left half of the screen and release.
+      await tester.drag(visualBubbleFinder, const Offset(-450, -100));
+      // Mid-animation check: should still be easing toward the left edge (18 + 26 = 44).
+      await tester.pump(const Duration(milliseconds: 120));
+      final midDx = tester.getCenter(visualBubbleFinder).dx;
+      expect(midDx, greaterThan(44.0));
+      expect(midDx, lessThan(400.0));
+
+      // After easing completes, it settles cleanly at the left edge.
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(visualBubbleFinder).dx, closeTo(44.0, 0.5));
+
+      // Drag slightly toward the center (staying in left half) -> returns to left edge.
+      await tester.drag(visualBubbleFinder, const Offset(150, 0));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(visualBubbleFinder).dx, closeTo(44.0, 0.5));
+
+      // Drag past the midline into the right half -> eases to right edge.
+      await tester.drag(visualBubbleFinder, const Offset(500, 0));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(visualBubbleFinder).dx, closeTo(756.0, 0.5));
     });
   });
 }
