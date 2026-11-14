@@ -8,6 +8,12 @@
 	<string>Buck needs camera access to scan your receipts and automatically log expenses.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Buck needs photo library access so you can select receipt photos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Buck needs permission to save and process captured receipt images.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Buck does not record audio, but the camera plugin may check microphone permissions.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

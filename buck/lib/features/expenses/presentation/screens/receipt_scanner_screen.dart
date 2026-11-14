@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -420,6 +420,38 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         }
       } catch (_) {
         // Fallback if takePicture fails on emulated webcam
+      }
+    }
+
+    // On iOS/Safari Web when live WebRTC video is unavailable or blocked, trigger
+    // native HTML5 rear camera capture (<input capture="environment">).
+    if (!fromCamera && widget.enableLiveCamera && kIsWeb) {
+      try {
+        final XFile? captured = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.rear,
+          imageQuality: 90,
+        );
+        if (captured == null) {
+          if (mounted) {
+            setState(() {
+              _capturing = false;
+              _statusMessage = 'Keep it flat. Hold steady.';
+            });
+          }
+          return;
+        }
+        photo = captured;
+        bytes = await captured.readAsBytes();
+        fromCamera = true;
+        if (mounted) {
+          setState(() {
+            _capturedBytes = bytes;
+            _statusMessage = 'Receipt captured!';
+          });
+        }
+      } catch (_) {
+        // Fallback if browser disallows programmatic camera input
       }
     }
 
