@@ -32,6 +32,49 @@
   </style>
 </head>
 <body>
+  <script>
+    window._buckLoadScript = function(src) {
+      return new Promise(function(resolve, reject) {
+        var existing = document.querySelector('script[src="' + src + '"]');
+        if (existing) {
+          if (window.Tesseract) {
+            resolve();
+          } else {
+            existing.addEventListener('load', resolve);
+            existing.addEventListener('error', reject);
+          }
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    window.buckRecognizeReceiptBase64 = async function(base64Image) {
+      try {
+        if (!base64Image) return '';
+        if (!window.Tesseract) {
+          await window._buckLoadScript(
+            'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
+          );
+        }
+        if (!window.Tesseract) return '';
+        var mime = base64Image.startsWith('iVBOR') ? 'image/png' : 'image/jpeg';
+        var result = await window.Tesseract.recognize(
+          'data:' + mime + ';base64,' + base64Image,
+          'eng'
+        );
+        return (result && result.data && result.data.text) ? result.data.text : '';
+      } catch (e) {
+        console.warn('Buck web OCR failed:', e);
+        return '';
+      }
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

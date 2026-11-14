@@ -5,7 +5,8 @@ import 'dart:ui' as ui;
 
 import '../../ai/data/services/buck_ai_service.dart';
 import 'receipt_ocr_engine_stub.dart'
-    if (dart.library.io) 'receipt_ocr_engine_io.dart' as ocr_engine;
+    if (dart.library.io) 'receipt_ocr_engine_io.dart'
+    if (dart.library.js_interop) 'receipt_ocr_engine_web.dart' as ocr_engine;
 
 /// Image quality metrics produced by [EdgeImageOps] during Stage 2 preprocessing.
 class ImageQualityAssessment {

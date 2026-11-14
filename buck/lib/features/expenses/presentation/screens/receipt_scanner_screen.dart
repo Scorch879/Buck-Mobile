@@ -197,10 +197,18 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         return;
       }
 
-      // Prefer the primary rear camera on mobile; fallback for web/desktop dev
+      // Prefer the primary rear camera on mobile and web Safari; fallback to first available
       final selectedCamera = _cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => _cameras.first,
+        orElse: () => _cameras.firstWhere(
+          (c) {
+            final name = c.name.toLowerCase();
+            return name.contains('back') ||
+                name.contains('rear') ||
+                name.contains('environment');
+          },
+          orElse: () => _cameras.first,
+        ),
       );
 
       final controller = CameraController(
@@ -349,6 +357,12 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       });
 
       final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _capturedBytes = bytes;
+        _statusMessage = 'Receipt captured!';
+      });
+
       final output = await ReceiptOcrProcessor.processReceipt(
         imagePath: picked.path,
         imageBytes: bytes,
@@ -363,7 +377,6 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       );
 
       setState(() {
-        _capturedBytes = bytes;
         _statusMessage = result.isLowQuality && result.qualityWarning != null
             ? result.qualityWarning!
             : 'Receipt captured!';
@@ -399,6 +412,12 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         photo = await controller.takePicture();
         bytes = await photo.readAsBytes();
         fromCamera = true;
+        if (mounted) {
+          setState(() {
+            _capturedBytes = bytes;
+            _statusMessage = 'Receipt captured!';
+          });
+        }
       } catch (_) {
         // Fallback if takePicture fails on emulated webcam
       }
