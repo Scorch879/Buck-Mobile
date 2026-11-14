@@ -26,75 +26,101 @@ class BuckScreenBackground extends StatelessWidget {
           colors: [AppColors.screenGradientTop, AppColors.screenGradientBottom],
         ),
       ),
-      child: ClipRect(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: _frameWidth,
-            height: _frameHeight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Background / Bottom Glow — flipped vertically.
-                Positioned(
-                  left: -11,
-                  top: -20,
-                  width: 641,
-                  height: 799,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.diagonal3Values(1, -1, 1),
-                    child: const _InsetSvg(
-                      asset: 'assets/backgrounds/bottom_glow.svg',
-                      left: -50,
-                      top: -40,
-                    ),
-                  ),
-                ),
-                // Background / Top Glow.
-                const Positioned(
-                  left: -23,
-                  top: -180,
-                  width: 571,
-                  height: 560,
-                  child: _InsetSvg(
-                    asset: 'assets/backgrounds/top_glow.svg',
-                    left: -50,
-                    top: -30,
-                  ),
-                ),
-                // Background / Accent Shape — flipped vertically, then rotated 90°.
-                Positioned(
-                  left: 9,
-                  top: 705,
-                  width: 601,
-                  height: 590,
-                  child: OverflowBox(
-                    minWidth: 590,
-                    maxWidth: 590,
-                    minHeight: 601,
-                    maxHeight: 601,
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.rotationZ(math.pi / 2)
-                        ..multiply(Matrix4.diagonal3Values(1, -1, 1)),
-                      child: const SizedBox(
-                        width: 590,
-                        height: 601,
-                        child: _InsetSvg(
-                          asset: 'assets/backgrounds/accent_shape.svg',
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRect(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: _frameWidth,
+                height: _frameHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Background / Bottom Glow — flipped vertically.
+                    Positioned(
+                      left: -11,
+                      top: -20,
+                      width: 641,
+                      height: 799,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.diagonal3Values(1, -1, 1),
+                        child: const _InsetSvg(
+                          asset: 'assets/backgrounds/bottom_glow.svg',
                           left: -50,
-                          top: -17,
+                          top: -40,
                         ),
                       ),
                     ),
-                  ),
+                    // Background / Top Glow.
+                    const Positioned(
+                      left: -23,
+                      top: -180,
+                      width: 571,
+                      height: 560,
+                      child: _InsetSvg(
+                        asset: 'assets/backgrounds/top_glow.svg',
+                        left: -50,
+                        top: -30,
+                      ),
+                    ),
+                    // Background / Accent Shape — flipped vertically, then rotated 90°.
+                    Positioned(
+                      left: 9,
+                      top: 705,
+                      width: 601,
+                      height: 590,
+                      child: OverflowBox(
+                        minWidth: 590,
+                        maxWidth: 590,
+                        minHeight: 601,
+                        maxHeight: 601,
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.rotationZ(math.pi / 2)
+                            ..multiply(Matrix4.diagonal3Values(1, -1, 1)),
+                          child: const SizedBox(
+                            width: 590,
+                            height: 601,
+                            child: _InsetSvg(
+                              asset: 'assets/backgrounds/accent_shape.svg',
+                              left: -50,
+                              top: -17,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          // Feather top edge into status bar / browser chrome (#100B09)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 64,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.navBarBg,
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

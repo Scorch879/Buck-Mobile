@@ -4,6 +4,7 @@ import '../../../core/constants/dev_config.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_layout.dart';
 import '../../../core/widgets/buck_footer_nav.dart';
 import '../../../core/widgets/buck_header.dart';
 import '../../../core/widgets/buck_screen_background.dart';
@@ -357,12 +358,9 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final padding = MediaQuery.viewPaddingOf(context);
     // Anchor the floating footer near the very bottom of the screen, leaving
-    // only minimal clearance for gesture home indicators on notched phones.
-    final footerBottom = padding.bottom > 0
-        ? (padding.bottom * 0.35).clamp(4.0, 10.0)
-        : 4.0;
+    // only minimal clearance for gesture home indicators or browser bars.
+    final footerBottom = AppLayout.footerBottomOffset(context);
     final contentInset = EdgeInsets.only(bottom: footerBottom);
 
     return ListenableBuilder(
@@ -376,7 +374,8 @@ class _MainShellState extends State<MainShell> {
     EdgeInsets contentInset,
   ) {
     return Scaffold(
-      backgroundColor: AppColors.screenGradientTop,
+      backgroundColor: AppColors.navBarBg,
+      extendBody: true,
       body: Stack(
         children: [
           const Positioned.fill(child: BuckScreenBackground()),

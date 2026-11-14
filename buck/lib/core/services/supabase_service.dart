@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/supabase_constants.dart';
 
@@ -19,6 +20,14 @@ class SupabaseService {
         authFlowType: AuthFlowType.pkce,
       ),
     );
+
+    if (kIsWeb &&
+        Supabase.instance.client.auth.currentSession == null &&
+        Uri.base.queryParameters.containsKey('code')) {
+      try {
+        await Supabase.instance.client.auth.getSessionFromUrl(Uri.base);
+      } catch (_) {}
+    }
   }
 
   static SupabaseClient get client => Supabase.instance.client;

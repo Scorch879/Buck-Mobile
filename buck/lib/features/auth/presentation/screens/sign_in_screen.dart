@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_layout.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/buck_background.dart';
 import '../../../../core/widgets/buck_button.dart';
@@ -211,14 +212,22 @@ class _SignInScreenState extends State<SignInScreen> {
     final size = MediaQuery.sizeOf(context);
     final isShort = size.height < 780;
     final isNarrow = size.width < 380;
+    final topSafe = AppLayout.topSafeInset(context);
+    final bottomSafe = AppLayout.bottomSafeInset(context);
+    final horizontalPad = isNarrow ? 14.0 : 20.0;
+    final verticalPad = isShort ? 12.0 : 24.0;
 
     return Scaffold(
+      backgroundColor: AppColors.navBarBg,
+      extendBody: true,
       body: BuckBackground(
         child: Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isNarrow ? 14 : 20,
-              vertical: isShort ? 12 : 24,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPad,
+              topSafe + verticalPad,
+              horizontalPad,
+              bottomSafe + verticalPad,
             ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),

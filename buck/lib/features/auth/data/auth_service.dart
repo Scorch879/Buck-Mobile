@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../ai/data/services/buck_ai_service.dart';
 
@@ -73,11 +74,35 @@ class AuthService {
 
   /// Initiate OAuth flow with Google
   Future<bool> signInWithGoogle() async {
-    return await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: oauthRedirectUrl,
-      authScreenLaunchMode:
-          kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+    final redirectTo = oauthRedirectUrl;
+    final res = await _client.auth.getOAuthSignInUrl(
+      provider: OAuthProvider.google,
+      redirectTo: redirectTo,
+    );
+
+    var targetUrl = res.url;
+    final codeChallenge = Uri.parse(res.url).queryParameters['code_challenge'];
+    if (codeChallenge != null && codeChallenge.isNotEmpty) {
+      try {
+        final directUrl = await _client.rpc<String>(
+          'create_mobile_google_oauth_url',
+          params: {
+            'p_code_challenge': codeChallenge,
+            'p_redirect_to': redirectTo,
+          },
+        );
+        if (directUrl.isNotEmpty) {
+          targetUrl = directUrl;
+        }
+      } catch (_) {
+        // Fall back to the standard Supabase OAuth URL if the RPC fails.
+      }
+    }
+
+    return await launchUrl(
+      Uri.parse(targetUrl),
+      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      webOnlyWindowName: '_self',
     );
   }
 

@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/theme/app_layout.dart';
 import '../../data/receipt_ocr_processor.dart';
 
 /// Data returned when a receipt is captured or selected in [ReceiptScannerScreen].
@@ -482,10 +483,13 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final topSafe = AppLayout.topSafeInset(context);
+
     return Scaffold(
       backgroundColor: _bgDark,
-      body: SafeArea(
-        bottom: false,
+      extendBody: true,
+      body: Padding(
+        padding: EdgeInsets.only(top: topSafe),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
@@ -1066,7 +1070,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   }
 
   Widget _buildBottomGestureBar(BuildContext context) {
-    final bottomPadding = MediaQuery.viewPaddingOf(context).bottom;
+    final bottomPadding = AppLayout.bottomSafeInset(context);
     return SizedBox(
       height: bottomPadding > 0 ? bottomPadding + 8 : 16,
     );

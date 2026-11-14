@@ -32,6 +32,9 @@ jobs:
 
       - name: Ensure iOS Podfile targets 15.5 for ML Kit
         run: |
+          if [ -f ios/Runner.xcodeproj/project.pbxproj ]; then
+            sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.5;/g" ios/Runner.xcodeproj/project.pbxproj
+          fi
           if [ ! -f ios/Podfile ]; then
             flutter build ios --config-only --no-codesign
           fi

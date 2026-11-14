@@ -3,13 +3,18 @@ import '../theme/app_colors.dart';
 
 class BuckBackground extends StatelessWidget {
   final Widget child;
+  final bool useSafeArea;
 
-  const BuckBackground({super.key, required this.child});
+  const BuckBackground({
+    super.key,
+    required this.child,
+    this.useSafeArea = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background,
+      color: AppColors.navBarBg,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -28,7 +33,7 @@ class BuckBackground extends StatelessWidget {
                       colors: [
                         Color(0xFF8C3E14),
                         Color(0xFF351208),
-                        AppColors.background,
+                        AppColors.navBarBg,
                       ],
                       stops: [0.0, 0.45, 1.0],
                     ),
@@ -37,8 +42,52 @@ class BuckBackground extends StatelessWidget {
               },
             ),
           ),
+          // Blend the top edge seamlessly into the browser/status-bar chrome (#100B09)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 88,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.navBarBg,
+                      AppColors.navBarBg.withValues(alpha: 0.45),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.35, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Soften bottom edge transition above gesture indicator / Safari capsule
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 72,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      AppColors.navBarBg.withValues(alpha: 0.45),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           // Child content
-          SafeArea(child: child),
+          if (useSafeArea) SafeArea(child: child) else child,
         ],
       ),
     );
