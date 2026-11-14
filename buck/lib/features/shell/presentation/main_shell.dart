@@ -170,7 +170,7 @@ class _MainShellState extends State<MainShell> {
   void _showComingSoon(String feature) =>
       _showMessage('$feature is coming soon.');
 
-  Future<void> _addIncome() async {
+  Future<void> _addIncome({ScannedReceiptResult? initialReceipt}) async {
     final wallet = _finance.snapshot?.activeWallet;
     if (wallet == null) {
       _showMessage('Create or select a wallet first to add income.');
@@ -179,7 +179,7 @@ class _MainShellState extends State<MainShell> {
     final saved = await showAddIncomeDialog(
       context,
       wallet: wallet,
-      onScan: _scanReceipt,
+      initialReceipt: initialReceipt,
       onSubmit: (request) => _finance.addIncome(
         walletId: wallet.id,
         amount: request.amount,
@@ -215,7 +215,21 @@ class _MainShellState extends State<MainShell> {
   Future<void> _scanReceipt() async {
     final scanned = await showReceiptScanner(context);
     if (scanned == null || !mounted) return;
+    if (scanned.manualEntryRequested) {
+      await _addExpense();
+      return;
+    }
     await _addExpense(initialReceipt: scanned);
+  }
+
+  Future<void> _scanIncomeReceipt() async {
+    final scanned = await showReceiptScanner(context);
+    if (scanned == null || !mounted) return;
+    if (scanned.manualEntryRequested) {
+      await _addIncome();
+      return;
+    }
+    await _addIncome(initialReceipt: scanned);
   }
 
   void _onTabSelected(BuckTab tab) {
@@ -285,6 +299,7 @@ class _MainShellState extends State<MainShell> {
                 snapshot: snapshot,
                 onRefresh: _finance.refresh,
                 onAddExpense: () => _onQuickAction(QuickAction.addExpense),
+                onScanReceipt: _scanReceipt,
                 bottomInset: contentInset,
               ),
             )
@@ -319,6 +334,7 @@ class _MainShellState extends State<MainShell> {
                             controller: _finance,
                             onRefresh: _finance.refresh,
                             onAddIncome: _addIncome,
+                            onScanIncome: _scanIncomeReceipt,
                             onMessage: _showMessage,
                             bottomInset: contentInset,
                           ),

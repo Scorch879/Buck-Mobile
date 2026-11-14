@@ -15,6 +15,7 @@ class ExpensesScreen extends StatelessWidget {
   final FinanceSnapshot snapshot;
   final Future<void> Function() onRefresh;
   final VoidCallback? onAddExpense;
+  final VoidCallback? onScanReceipt;
   final EdgeInsets bottomInset;
 
   const ExpensesScreen({
@@ -22,6 +23,7 @@ class ExpensesScreen extends StatelessWidget {
     required this.snapshot,
     required this.onRefresh,
     this.onAddExpense,
+    this.onScanReceipt,
     this.bottomInset = EdgeInsets.zero,
   });
 
@@ -76,6 +78,7 @@ class ExpensesScreen extends StatelessWidget {
                   RecentExpensesCard(
                     expenses: s.monthExpenseList,
                     onAdd: onAddExpense,
+                    onScanReceipt: onScanReceipt,
                   ),
                 ],
               ),

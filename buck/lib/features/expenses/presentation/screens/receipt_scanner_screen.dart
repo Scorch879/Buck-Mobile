@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -5,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+
+import '../../data/receipt_ocr_processor.dart';
 
 /// Data returned when a receipt is captured or selected in [ReceiptScannerScreen].
 class ScannedReceiptResult {
@@ -14,15 +17,50 @@ class ScannedReceiptResult {
   final DateTime date;
   final Uint8List? imageBytes;
   final bool isFromLiveCamera;
+  final double evatAmount;
+  final double vatableSales;
+  final double? subtotalAmount;
+  final String? rawText;
+  final int? processingTimeMs;
+  final String? qualityWarning;
+  final bool isLowQuality;
+  final bool manualEntryRequested;
 
-  const ScannedReceiptResult({
+  ScannedReceiptResult({
     required this.amount,
     required this.categoryName,
     required this.description,
     required this.date,
     this.imageBytes,
     this.isFromLiveCamera = false,
-  });
+    double? evatAmount,
+    double? vatableSales,
+    this.subtotalAmount,
+    this.rawText,
+    this.processingTimeMs,
+    this.qualityWarning,
+    this.isLowQuality = false,
+    this.manualEntryRequested = false,
+  })  : vatableSales = vatableSales ??
+            double.parse((amount / 1.12).toStringAsFixed(2)),
+        evatAmount = evatAmount ??
+            double.parse(
+              (amount - double.parse((amount / 1.12).toStringAsFixed(2)))
+                  .toStringAsFixed(2),
+            );
+
+  /// Returned when the user explicitly opts out of camera scanning for manual entry.
+  factory ScannedReceiptResult.manualEntry() {
+    return ScannedReceiptResult(
+      amount: 0,
+      categoryName: 'Other',
+      description: '',
+      date: DateTime.now(),
+      evatAmount: 0,
+      vatableSales: 0,
+      manualEntryRequested: true,
+    );
+  }
 }
 
 /// Pushes the Figma "Screen / Receipt scanner — Buck" (2480:672) full-screen modal.
@@ -97,6 +135,8 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   bool _capturing = false;
   Uint8List? _capturedBytes;
   String _statusMessage = 'Keep it flat. Hold steady.';
+  Offset? _focusPoint;
+  Timer? _focusTimer;
 
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -111,6 +151,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
 
   @override
   void dispose() {
+    _focusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _disposeCamera();
     super.dispose();
@@ -156,7 +197,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         return;
       }
 
-      // Prefer back camera on mobile; fallback to first available (e.g. webcam on dev/web)
+      // Prefer the primary rear camera on mobile; fallback for web/desktop dev
       final selectedCamera = _cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => _cameras.first,
@@ -178,7 +219,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         _cameraController = controller;
         _cameraInitialized = true;
         _initializingCamera = false;
-        _statusMessage = 'Keep it flat. Hold steady.';
+        _statusMessage = 'Good Lighting — Keep flat & steady.';
       });
     } catch (_) {
       // Permission denied, no camera device in dev environment, or unsupported platform
@@ -245,6 +286,54 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     await _initCamera();
   }
 
+  Future<void> _handleFocusTap(TapUpDetails details, Size viewportSize) async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return;
+
+    final normalized = Offset(
+      (details.localPosition.dx / viewportSize.width).clamp(0.0, 1.0),
+      (details.localPosition.dy / viewportSize.height).clamp(0.0, 1.0),
+    );
+
+    _focusTimer?.cancel();
+    setState(() => _focusPoint = details.localPosition);
+    _focusTimer = Timer(const Duration(milliseconds: 900), () {
+      if (mounted) setState(() => _focusPoint = null);
+    });
+
+    try {
+      await controller.setFocusPoint(normalized);
+      await controller.setExposurePoint(normalized);
+    } catch (_) {
+      // Webcams or fixed-focus hardware may not support point focus/exposure.
+    }
+  }
+
+  ScannedReceiptResult _resultFromPipeline(
+    ReceiptPipelineOutput output, {
+    Uint8List? imageBytes,
+    required bool isFromLiveCamera,
+  }) {
+    final p = output.parsed;
+    final q = output.quality;
+    return ScannedReceiptResult(
+      amount: p.totalAmount > 0 ? p.totalAmount : 0,
+      categoryName: p.categoryName,
+      description: p.merchantName,
+      date: p.date,
+      imageBytes: imageBytes,
+      isFromLiveCamera: isFromLiveCamera,
+      evatAmount: p.evatAmount,
+      vatableSales: p.vatableSales,
+      subtotalAmount: p.subtotalAmount,
+      rawText: p.rawText,
+      processingTimeMs: output.processingTimeMs,
+      qualityWarning: q?.qualityWarning,
+      isLowQuality: q?.isLowQuality ?? false,
+    );
+  }
+
   Future<void> _pickFromGallery() async {
     if (_capturing) return;
     try {
@@ -256,30 +345,34 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
 
       setState(() {
         _capturing = true;
-        _statusMessage = 'Processing receipt...';
+        _statusMessage = 'Running on-device OCR...';
       });
 
       final bytes = await picked.readAsBytes();
+      final output = await ReceiptOcrProcessor.processReceipt(
+        imagePath: picked.path,
+        imageBytes: bytes,
+        sourceName: picked.name,
+      );
       if (!mounted) return;
+
+      final result = _resultFromPipeline(
+        output,
+        imageBytes: bytes,
+        isFromLiveCamera: false,
+      );
 
       setState(() {
         _capturedBytes = bytes;
-        _statusMessage = 'Receipt captured!';
+        _statusMessage = result.isLowQuality && result.qualityWarning != null
+            ? result.qualityWarning!
+            : 'Receipt captured!';
       });
 
       await Future<void>.delayed(const Duration(milliseconds: 350));
       if (!mounted) return;
 
-      Navigator.of(context).pop(
-        ScannedReceiptResult(
-          amount: 842.50,
-          categoryName: 'Shopping',
-          description: 'Scanned Receipt (${picked.name})',
-          date: DateTime.now(),
-          imageBytes: bytes,
-          isFromLiveCamera: false,
-        ),
-      );
+      Navigator.of(context).pop(result);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -296,13 +389,14 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       _statusMessage = 'Scanning receipt...';
     });
 
+    XFile? photo;
     Uint8List? bytes;
     bool fromCamera = false;
 
     final controller = _cameraController;
     if (controller != null && controller.value.isInitialized) {
       try {
-        final XFile photo = await controller.takePicture();
+        photo = await controller.takePicture();
         bytes = await photo.readAsBytes();
         fromCamera = true;
       } catch (_) {
@@ -310,25 +404,29 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       }
     }
 
+    final output = await ReceiptOcrProcessor.processReceipt(
+      imagePath: photo?.path,
+      imageBytes: bytes,
+    );
+
     if (!mounted) return;
+    final result = _resultFromPipeline(
+      output,
+      imageBytes: bytes,
+      isFromLiveCamera: fromCamera,
+    );
+
     setState(() {
       if (bytes != null) _capturedBytes = bytes;
-      _statusMessage = 'Receipt captured!';
+      _statusMessage = result.isLowQuality && result.qualityWarning != null
+          ? result.qualityWarning!
+          : 'Receipt captured!';
     });
 
     await Future<void>.delayed(const Duration(milliseconds: 320));
     if (!mounted) return;
 
-    Navigator.of(context).pop(
-      ScannedReceiptResult(
-        amount: 842.50,
-        categoryName: 'Shopping',
-        description: 'Fresh Mart - Makati (#098765)',
-        date: DateTime.now(),
-        imageBytes: bytes,
-        isFromLiveCamera: fromCamera,
-      ),
-    );
+    Navigator.of(context).pop(result);
   }
 
   @override
@@ -500,85 +598,118 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(27),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 1. Live camera feed or clean viewfinder backdrop (#2480:694)
-            _buildViewportFeed(),
+        child: LayoutBuilder(
+          builder: (context, constraints) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTapUp: (details) =>
+                _handleFocusTap(details, constraints.biggest),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. Live camera feed or clean viewfinder backdrop (#2480:694)
+                _buildViewportFeed(),
 
-            // 2. Peripheral dimming (#2480:695)
-            const IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.23, 0.73, 1.0],
-                    colors: [
-                      Color(0x70100B09),
-                      Color(0x00100B09),
-                      Color(0x00100B09),
-                      Color(0x70100B09),
-                    ],
+                // 2. Peripheral dimming (#2480:695)
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.0, 0.23, 0.73, 1.0],
+                        colors: [
+                          Color(0x70100B09),
+                          Color(0x00100B09),
+                          Color(0x00100B09),
+                          Color(0x70100B09),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // 3. Receipt alignment guides (#2480:696)
-            IgnorePointer(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(52, 35, 52, 75),
-                child: CustomPaint(
-                  painter: _ReceiptAlignmentGuidesPainter(
-                    color: _accentOrange,
-                    strokeWidth: 3,
+                // 3. Receipt alignment guides (#2480:696)
+                IgnorePointer(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(52, 35, 52, 75),
+                    child: CustomPaint(
+                      painter: _ReceiptAlignmentGuidesPainter(
+                        color: _accentOrange,
+                        strokeWidth: 3,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // 4. Alignment feedback pill (#2480:697)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 22,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _bgDark,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: _shutterCoral,
+                // 3b. Tap-to-focus reticle indicator
+                if (_focusPoint != null)
+                  Positioned(
+                    left: _focusPoint!.dx - 24,
+                    top: _focusPoint!.dy - 24,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _accentOrange,
+                            width: 1.5,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _statusMessage,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: _creamText,
-                        ),
+                    ),
+                  ),
+
+                // 4. Alignment feedback pill (#2480:697)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 22,
+                  child: Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
                       ),
-                    ],
+                      decoration: BoxDecoration(
+                        color: _bgDark,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: _shutterCoral,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _statusMessage,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: _creamText,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -831,7 +962,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
             ),
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
 
           // Helper text (#2480:714)
           Text(
@@ -841,6 +972,41 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
               fontSize: 12,
               fontWeight: FontWeight.w400,
               color: _mutedText,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Manual entry fallback (SRS 3.1.2 / SDD Screen 3)
+          Semantics(
+            button: true,
+            label: 'Manual entry',
+            child: GestureDetector(
+              key: const Key('scanner_manual_entry_button'),
+              behavior: HitTestBehavior.opaque,
+              onTap: _capturing
+                  ? null
+                  : () => Navigator.of(context)
+                      .pop(ScannedReceiptResult.manualEntry()),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: _surfaceButton,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _strokeBrown, width: 1),
+                ),
+                child: Text(
+                  'Cancel / Manual entry',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _accentOrange,
+                  ),
+                ),
+              ),
             ),
           ),
         ],

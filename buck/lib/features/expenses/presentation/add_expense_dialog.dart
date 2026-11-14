@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency.dart';
 import '../../../core/widgets/buck_overlay_dialog.dart';
 import '../../ai/data/services/buck_ai_service.dart';
 import '../../finance/data/finance_models.dart';
@@ -83,19 +84,22 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
   bool _saving = false;
   bool _autoCategorizing = false;
   String? _error;
+  ScannedReceiptResult? _scannedReceipt;
   late final BuckAiService _aiService = widget.aiService ?? BuckAiService.instance;
 
   @override
   void initState() {
     super.initState();
     final initial = widget.initialReceipt;
-    if (initial != null) {
+    if (initial != null && !initial.manualEntryRequested) {
+      _scannedReceipt = initial;
       _applyScannedReceipt(initial);
     }
   }
 
   void _applyScannedReceipt(ScannedReceiptResult receipt) {
-    _amountController.text = receipt.amount.toStringAsFixed(2);
+    _amountController.text =
+        receipt.amount > 0 ? receipt.amount.toStringAsFixed(2) : '';
     _descriptionController.text = receipt.description;
     _date = receipt.date;
     if (expenseCategories.contains(receipt.categoryName)) {
@@ -155,7 +159,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     final result = await showReceiptScanner(context);
     if (result != null && mounted) {
       setState(() {
-        _applyScannedReceipt(result);
+        if (result.manualEntryRequested) {
+          _scannedReceipt = null;
+        } else {
+          _scannedReceipt = result;
+          _applyScannedReceipt(result);
+        }
         _error = null;
       });
     }
@@ -244,6 +253,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
               spacing: 16,
               children: [
                 _header(),
+                if (_scannedReceipt != null)
+                  _OcrVerificationBanner(
+                    receipt: _scannedReceipt!,
+                    amountListenable: _amountController,
+                    onRescan: _saving ? null : _handleScanTap,
+                  ),
                 if (_error != null) _ErrorBanner(_error!),
                 _OverlayField(
                   label: 'Amount',
@@ -591,6 +606,190 @@ class _ErrorBanner extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Human-in-the-Loop OCR verification summary (SDD 6.2 Screen 4) showing
+/// cropped receipt preview, processing latency, dynamic 12% EVAT breakdown,
+/// and quality warnings when applicable.
+class _OcrVerificationBanner extends StatelessWidget {
+  final ScannedReceiptResult receipt;
+  final TextEditingController amountListenable;
+  final VoidCallback? onRescan;
+
+  const _OcrVerificationBanner({
+    required this.receipt,
+    required this.amountListenable,
+    this.onRescan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbBytes = receipt.imageBytes;
+    final latency = receipt.processingTimeMs;
+
+    return Container(
+      key: const Key('ocr_verification_banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.inputBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: receipt.isLowQuality
+              ? AppColors.amberAccent.withValues(alpha: 0.75)
+              : AppColors.primaryOrange.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  color: const Color(0xFF2A1914),
+                  alignment: Alignment.center,
+                  child: thumbBytes != null && thumbBytes.isNotEmpty
+                      ? Image.memory(
+                          thumbBytes,
+                          width: 42,
+                          height: 42,
+                          fit: BoxFit.cover,
+                        )
+                      : const Icon(
+                          Icons.receipt_long_outlined,
+                          size: 20,
+                          color: AppColors.primaryOrange,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryOrange.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        latency != null
+                            ? 'OCR Verified (${latency}ms)'
+                            : 'OCR Verified',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryOrange,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: amountListenable,
+                      builder: (context, value, _) {
+                        final parsed = double.tryParse(
+                          value.text.replaceAll(',', '').trim(),
+                        );
+                        final double vatable;
+                        final double evat;
+                        if (parsed != null &&
+                            parsed > 0 &&
+                            (parsed - receipt.amount).abs() < 0.01) {
+                          vatable = receipt.vatableSales;
+                          evat = receipt.evatAmount;
+                        } else if (parsed != null && parsed > 0) {
+                          vatable = double.parse(
+                            (parsed / 1.12).toStringAsFixed(2),
+                          );
+                          evat = double.parse(
+                            (parsed - vatable).toStringAsFixed(2),
+                          );
+                        } else {
+                          vatable = 0;
+                          evat = 0;
+                        }
+                        return Text(
+                          'Vatable Sales: ${formatPesoCents(vatable)} • 12% EVAT: ${formatPesoCents(evat)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              if (onRescan != null)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onRescan,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    child: Text(
+                      'Rescan',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryOrange,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (receipt.qualityWarning != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.amberAccent.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.amberAccent.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                spacing: 6,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 15,
+                    color: AppColors.amberAccent,
+                  ),
+                  Expanded(
+                    child: Text(
+                      receipt.qualityWarning!,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.amberAccent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

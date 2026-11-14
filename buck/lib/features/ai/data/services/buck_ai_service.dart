@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../../../core/constants/buck_ai_constants.dart';
 import '../../../../core/constants/dev_config.dart';
 import '../../../../core/services/supabase_service.dart';
+import '../../../expenses/data/receipt_ocr_processor.dart';
 import '../../../finance/data/dev_finance_source.dart';
 import '../models/ai_chat_message.dart';
 import '../models/ai_insight_response.dart';
@@ -290,9 +291,12 @@ class BuckAiService {
   }) async {
     if (descriptions.isEmpty) return const [];
 
+    final sanitizedDescriptions =
+        descriptions.map(ReceiptOcrProcessor.sanitizePii).toList();
+
     final effectiveToken = await _resolveToken(overrideToken: token);
     if (effectiveToken == null && _isDevMockSession) {
-      return descriptions
+      return sanitizedDescriptions
           .map((d) => mapToMobileCategory('', fallbackDescription: d))
           .toList();
     }
@@ -305,7 +309,7 @@ class BuckAiService {
             headers: _buildHeaders(effectiveToken),
             body: jsonEncode({
               'kind': kind,
-              'descriptions': descriptions,
+              'descriptions': sanitizedDescriptions,
             }),
           )
           .timeout(_requestTimeout);
@@ -318,7 +322,8 @@ class BuckAiService {
             for (var i = 0; i < categories.length; i++)
               mapToMobileCategory(
                 categories[i].toString(),
-                fallbackDescription: i < descriptions.length ? descriptions[i] : '',
+                fallbackDescription:
+                    i < sanitizedDescriptions.length ? sanitizedDescriptions[i] : '',
               ),
           ];
         }
@@ -328,7 +333,7 @@ class BuckAiService {
     }
 
     // Offline / fallback local keyword categorization
-    return descriptions
+    return sanitizedDescriptions
         .map((d) => mapToMobileCategory('', fallbackDescription: d))
         .toList();
   }

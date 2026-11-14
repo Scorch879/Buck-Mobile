@@ -16,12 +16,14 @@ class RecentExpensesCard extends StatefulWidget {
   /// Expenses to list, newest first.
   final List<ExpenseRecord> expenses;
   final VoidCallback? onAdd;
+  final VoidCallback? onScanReceipt;
   final ValueChanged<ExpenseRecord>? onTapExpense;
 
   const RecentExpensesCard({
     super.key,
     required this.expenses,
     this.onAdd,
+    this.onScanReceipt,
     this.onTapExpense,
   });
 
@@ -58,7 +60,10 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ListHeader(onAdd: widget.onAdd),
+            _ListHeader(
+              onAdd: widget.onAdd,
+              onScanReceipt: widget.onScanReceipt,
+            ),
             const Padding(
               padding: EdgeInsets.fromLTRB(15, 13, 16, 15),
               child: ColoredBox(
@@ -132,8 +137,9 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
 
 class _ListHeader extends StatelessWidget {
   final VoidCallback? onAdd;
+  final VoidCallback? onScanReceipt;
 
-  const _ListHeader({this.onAdd});
+  const _ListHeader({this.onAdd, this.onScanReceipt});
 
   @override
   Widget build(BuildContext context) {
@@ -167,8 +173,82 @@ class _ListHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (onScanReceipt != null) ...[
+            _ScanReceiptButton(onTap: onScanReceipt),
+            const SizedBox(width: 8),
+          ],
           _PlusButton(onTap: onAdd),
         ],
+      ),
+    );
+  }
+}
+
+class _ScanReceiptButton extends StatefulWidget {
+  final VoidCallback? onTap;
+
+  const _ScanReceiptButton({this.onTap});
+
+  @override
+  State<_ScanReceiptButton> createState() => _ScanReceiptButtonState();
+}
+
+class _ScanReceiptButtonState extends State<_ScanReceiptButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Scan receipt',
+      child: GestureDetector(
+        key: const Key('expenses_scan_receipt_button'),
+        behavior: HitTestBehavior.opaque,
+        onTapDown: widget.onTap == null
+            ? null
+            : (_) => setState(() => _pressed = true),
+        onTapUp: widget.onTap == null
+            ? null
+            : (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.92 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOutCubic,
+          child: Container(
+            height: 25,
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF24170F),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: AppColors.primaryOrange.withValues(alpha: 0.55),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 4,
+              children: [
+                SvgPicture.asset(
+                  'assets/icons/scan.svg',
+                  width: 13,
+                  height: 13,
+                ),
+                Text(
+                  'Scan',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryOrange,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

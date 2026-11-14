@@ -21,6 +21,7 @@ class WalletScreen extends StatefulWidget {
   final FinanceController controller;
   final Future<void> Function() onRefresh;
   final VoidCallback onAddIncome;
+  final VoidCallback? onScanIncome;
   final ValueChanged<String>? onMessage;
   final EdgeInsets bottomInset;
 
@@ -30,6 +31,7 @@ class WalletScreen extends StatefulWidget {
     required this.controller,
     required this.onRefresh,
     required this.onAddIncome,
+    this.onScanIncome,
     this.onMessage,
     this.bottomInset = EdgeInsets.zero,
   });
@@ -127,6 +129,7 @@ class _WalletScreenState extends State<WalletScreen> {
                             key: const ValueKey('manage_income'),
                             incomes: s.allIncomes,
                             onAddIncome: widget.onAddIncome,
+                            onScanIncome: widget.onScanIncome,
                           ),
                   ),
 

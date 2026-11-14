@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
@@ -19,11 +20,13 @@ enum IncomeSortOption {
 class ManageIncomeCard extends StatefulWidget {
   final List<IncomeRecord> incomes;
   final VoidCallback onAddIncome;
+  final VoidCallback? onScanIncome;
 
   const ManageIncomeCard({
     super.key,
     required this.incomes,
     required this.onAddIncome,
+    this.onScanIncome,
   });
 
   @override
@@ -338,34 +341,83 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
             ),
           const SizedBox(height: 12),
 
-          // "+ Add Income" Button
-          GestureDetector(
-            onTap: widget.onAddIncome,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFE57136),
-                    Color(0xFFF48648),
-                    Color(0xFFFF8D43),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          // "+ Add Income" & optional "Scan" action buttons
+          Row(
+            spacing: 8,
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: widget.onAddIncome,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFE57136),
+                          Color(0xFFF48648),
+                          Color(0xFFFF8D43),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '+ Add Income',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1D110C),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                '+ Add Income',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1D110C),
+              if (widget.onScanIncome != null)
+                Semantics(
+                  button: true,
+                  label: 'Scan income slip',
+                  child: GestureDetector(
+                    key: const Key('wallet_scan_income_button'),
+                    onTap: widget.onScanIncome,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      height: 36,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF24170F),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFFF994A),
+                          width: 1,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: 6,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/icons/scan.svg',
+                            width: 15,
+                            height: 15,
+                          ),
+                          Text(
+                            'Scan',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFFF994A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+            ],
           ),
         ],
       ),

@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency.dart';
 import '../../../core/widgets/buck_overlay_dialog.dart';
+import '../../expenses/presentation/screens/receipt_scanner_screen.dart';
 import '../../finance/data/finance_models.dart';
 
 /// Income sources offered in the Category field.
@@ -43,11 +45,16 @@ Future<bool> showAddIncomeDialog(
   required Wallet wallet,
   required Future<void> Function(AddIncomeRequest request) onSubmit,
   VoidCallback? onScan,
+  ScannedReceiptResult? initialReceipt,
 }) async {
   final saved = await showBuckOverlayDialog<bool>(
     context: context,
-    builder: (_) =>
-        AddIncomeDialog(wallet: wallet, onSubmit: onSubmit, onScan: onScan),
+    builder: (_) => AddIncomeDialog(
+      wallet: wallet,
+      onSubmit: onSubmit,
+      onScan: onScan,
+      initialReceipt: initialReceipt,
+    ),
   );
   return saved ?? false;
 }
@@ -56,12 +63,14 @@ class AddIncomeDialog extends StatefulWidget {
   final Wallet wallet;
   final Future<void> Function(AddIncomeRequest request) onSubmit;
   final VoidCallback? onScan;
+  final ScannedReceiptResult? initialReceipt;
 
   const AddIncomeDialog({
     super.key,
     required this.wallet,
     required this.onSubmit,
     this.onScan,
+    this.initialReceipt,
   });
 
   @override
@@ -77,6 +86,71 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   DateTime _date = DateTime.now();
   bool _saving = false;
   String? _error;
+  ScannedReceiptResult? _scannedReceipt;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialReceipt;
+    if (initial != null && !initial.manualEntryRequested) {
+      _scannedReceipt = initial;
+      _applyScannedReceipt(initial);
+    }
+  }
+
+  void _applyScannedReceipt(ScannedReceiptResult receipt) {
+    _amountController.text =
+        receipt.amount > 0 ? receipt.amount.toStringAsFixed(2) : '';
+    _descriptionController.text = receipt.description;
+    _date = receipt.date;
+    _source = _inferIncomeSource(receipt);
+  }
+
+  String _inferIncomeSource(ScannedReceiptResult receipt) {
+    final text = '${receipt.description} ${receipt.rawText ?? ''}'.toLowerCase();
+    if (RegExp(r'\b(?:salary|payroll|paycheck|wage|payslip|compensation)\b')
+        .hasMatch(text)) {
+      return 'Salary';
+    }
+    if (RegExp(r'\b(?:allowance|stipend|baon)\b').hasMatch(text)) {
+      return 'Allowance';
+    }
+    if (RegExp(r'\b(?:freelance|consulting|contract|commission|gig|upwork|fiverr)\b')
+        .hasMatch(text)) {
+      return 'Freelance';
+    }
+    if (RegExp(r'\b(?:business|invoice|sales|revenue|payout|store|mart)\b')
+        .hasMatch(text)) {
+      return 'Business';
+    }
+    if (RegExp(r'\b(?:dividend|interest|investment|stock|bond|yield|crypto)\b')
+        .hasMatch(text)) {
+      return 'Investment';
+    }
+    if (RegExp(r'\b(?:gift|bonus|present|aguinaldo)\b').hasMatch(text)) {
+      return 'Gift';
+    }
+    return 'Other';
+  }
+
+  Future<void> _handleScanTap() async {
+    if (widget.onScan != null) {
+      widget.onScan!();
+      return;
+    }
+    final result = await showReceiptScanner(context);
+    if (result != null && mounted) {
+      setState(() {
+        if (result.manualEntryRequested) {
+          _scannedReceipt = null;
+        } else {
+          _scannedReceipt = result;
+          _applyScannedReceipt(result);
+        }
+        _error = null;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -161,6 +235,11 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
               spacing: 16,
               children: [
                 _header(),
+                if (_scannedReceipt != null)
+                  _IncomeOcrBanner(
+                    receipt: _scannedReceipt!,
+                    onRescan: _saving ? null : _handleScanTap,
+                  ),
                 if (_error != null) _ErrorBanner(_error!),
                 _OverlayField(
                   label: 'Amount',
@@ -254,7 +333,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                 label: 'Scan',
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: widget.onScan,
+                  onTap: _handleScanTap,
                   child: SvgPicture.asset('assets/icons/scan_large.svg'),
                 ),
               ),
@@ -442,6 +521,117 @@ class _ErrorBanner extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IncomeOcrBanner extends StatelessWidget {
+  final ScannedReceiptResult receipt;
+  final VoidCallback? onRescan;
+
+  const _IncomeOcrBanner({required this.receipt, this.onRescan});
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbBytes = receipt.imageBytes;
+    return Container(
+      key: const Key('income_ocr_verification_banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.inputBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: receipt.isLowQuality
+              ? AppColors.amberAccent.withValues(alpha: 0.75)
+              : AppColors.primaryOrange.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 6,
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  color: const Color(0xFF2A1914),
+                  alignment: Alignment.center,
+                  child: thumbBytes != null && thumbBytes.isNotEmpty
+                      ? Image.memory(
+                          thumbBytes,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                        )
+                      : const Icon(
+                          Icons.receipt_long_outlined,
+                          size: 18,
+                          color: AppColors.primaryOrange,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      receipt.processingTimeMs != null
+                          ? 'OCR Scanned (${receipt.processingTimeMs}ms)'
+                          : 'OCR Scanned',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryOrange,
+                      ),
+                    ),
+                    Text(
+                      'Detected: ${formatPesoCents(receipt.amount)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onRescan != null)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onRescan,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    child: Text(
+                      'Rescan',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryOrange,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (receipt.qualityWarning != null)
+            Text(
+              receipt.qualityWarning!,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.amberAccent,
+              ),
+            ),
         ],
       ),
     );
