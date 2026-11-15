@@ -27,7 +27,7 @@ class BuckScreenBackground extends StatelessWidget {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'assets/images/background_waves.png',
+              'assets/images/background_waves.jpg',
               fit: BoxFit.cover,
               alignment: const Alignment(0, -0.35),
               errorBuilder: (context, error, stackTrace) {

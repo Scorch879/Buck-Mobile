@@ -499,7 +499,9 @@ class _MainShellState extends State<MainShell>
 
           return Stack(
             children: [
-              const Positioned.fill(child: BuckScreenBackground()),
+              const Positioned.fill(
+                child: RepaintBoundary(child: BuckScreenBackground()),
+              ),
               Column(
                 children: [
                   BuckHeader(

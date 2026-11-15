@@ -24,7 +24,7 @@ Future<String?> extractNativeOcrText({
     if (promise == null) return null;
 
     final result = await promise.toDart.timeout(
-      const Duration(seconds: 8),
+      const Duration(seconds: 25),
       onTimeout: () => null,
     );
     final text = result?.toDart.trim();

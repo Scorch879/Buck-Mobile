@@ -15,8 +15,15 @@
   <meta name="apple-mobile-web-app-title" content="buck">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
+  <!-- Favicon & Resource Hints -->
   <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://glnuzqmnmzuxgujmxigx.supabase.co" crossorigin>
+  <link rel="preload" href="flutter_bootstrap.js" as="script">
+  <link rel="preload" href="main.dart.js" as="script">
 
   <title>buck</title>
   <link rel="manifest" href="manifest.json">
@@ -83,11 +90,59 @@
       visibility: hidden;
       z-index: -1;
     }
+
+    #buck-boot-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background-color: #2B1309;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.22s ease-out;
+    }
+
+    #buck-boot-loader.hidden {
+      opacity: 0;
+    }
+
+    .buck-boot-badge {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #FFF6E5;
+      color: #2B1309;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 800 26px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-shadow: 0 0 0 6px rgba(255, 118, 56, 0.22);
+      animation: buckPulse 1.3s ease-in-out infinite;
+    }
+
+    @keyframes buckPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 5px rgba(255, 118, 56, 0.18); }
+      50% { transform: scale(1.04); box-shadow: 0 0 0 11px rgba(255, 118, 56, 0.34); }
+    }
   </style>
 </head>
 <body>
+  <div id="buck-boot-loader" aria-hidden="true">
+    <div class="buck-boot-badge">B</div>
+  </div>
   <div id="buck-viewport-probe" aria-hidden="true"></div>
   <div id="buck-lvh-probe" aria-hidden="true"></div>
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      var loader = document.getElementById('buck-boot-loader');
+      if (!loader) return;
+      loader.classList.add('hidden');
+      setTimeout(function() { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 260);
+    }, { once: true });
+  </script>
   <script>
     // Re-apply viewport-fit=cover because Flutter Web rewrites the viewport
     // meta tag on startup, and expose safe-area insets without overriding
@@ -228,21 +283,149 @@
       });
     };
 
+    window._buckTesseractWorkerPromise = null;
+    window._buckGetTesseractWorker = async function() {
+      if (!window.Tesseract) {
+        await window._buckLoadScript(
+          'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
+        );
+      }
+      if (!window.Tesseract) return null;
+      if (!window._buckTesseractWorkerPromise) {
+        window._buckTesseractWorkerPromise = (async function() {
+          var worker = await window.Tesseract.createWorker('eng');
+          if (worker && typeof worker.setParameters === 'function') {
+            await worker.setParameters({
+              tessedit_pageseg_mode: '6',
+              preserve_interword_spaces: '1'
+            });
+          }
+          return worker;
+        })().catch(function(err) {
+          window._buckTesseractWorkerPromise = null;
+          throw err;
+        });
+      }
+      return window._buckTesseractWorkerPromise;
+    };
+
+    window._buckPreprocessReceiptCanvas = async function(dataUrl, invertColors) {
+      return new Promise(function(resolve) {
+        var img = new Image();
+        img.onload = function() {
+          try {
+            var srcW = img.naturalWidth || img.width || 0;
+            var srcH = img.naturalHeight || img.height || 0;
+            if (!srcW || !srcH) {
+              resolve(dataUrl);
+              return;
+            }
+            var maxSide = 1800;
+            var minWidth = 960;
+            var scale = 1.0;
+            var longest = Math.max(srcW, srcH);
+            if (longest > maxSide) {
+              scale = maxSide / longest;
+            } else if (srcW < minWidth && longest * (minWidth / srcW) <= maxSide) {
+              scale = minWidth / srcW;
+            }
+            var w = Math.max(1, Math.round(srcW * scale));
+            var h = Math.max(1, Math.round(srcH * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) {
+              resolve(dataUrl);
+              return;
+            }
+            ctx.drawImage(img, 0, 0, w, h);
+
+            var imgData = ctx.getImageData(0, 0, w, h);
+            var d = imgData.data;
+            var pixelCount = w * h;
+            var luma = new Uint8Array(pixelCount);
+            var hist = new Uint32Array(256);
+
+            for (var i = 0, p = 0; i < d.length; i += 4, p++) {
+              var g = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+              if (invertColors) g = 255 - g;
+              if (g < 0) g = 0;
+              else if (g > 255) g = 255;
+              luma[p] = g;
+              hist[g]++;
+            }
+
+            // Stretch ink (4th percentile) -> 0 and paper background (92nd percentile) -> 255.
+            var lowCut = Math.floor(pixelCount * 0.04);
+            var highCut = Math.floor(pixelCount * 0.92);
+            var cum = 0;
+            var pLow = 0;
+            var pHigh = 255;
+            var foundLow = false;
+            for (var v = 0; v < 256; v++) {
+              cum += hist[v];
+              if (!foundLow && cum >= lowCut) {
+                pLow = v;
+                foundLow = true;
+              }
+              if (cum >= highCut) {
+                pHigh = v;
+                break;
+              }
+            }
+            var span = Math.max(24, pHigh - pLow);
+
+            for (var idx = 0, q = 0; idx < d.length; idx += 4, q++) {
+              var norm = (luma[q] - pLow) / span;
+              if (norm < 0) norm = 0;
+              else if (norm > 1) norm = 1;
+              // Crisp curve: darken printed thermal ink while brightening paper backdrop.
+              var stretched = norm < 0.45
+                ? Math.round(Math.pow(norm / 0.45, 1.35) * 90)
+                : Math.round(90 + ((norm - 0.45) / 0.55) * 165);
+              if (stretched > 235) stretched = 255;
+              d[idx] = stretched;
+              d[idx + 1] = stretched;
+              d[idx + 2] = stretched;
+              d[idx + 3] = 255;
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch (_) {
+            resolve(dataUrl);
+          }
+        };
+        img.onerror = function() { resolve(dataUrl); };
+        img.src = dataUrl;
+      });
+    };
+
     window.buckRecognizeReceiptBase64 = async function(base64Image) {
       try {
         if (!base64Image) return '';
-        if (!window.Tesseract) {
-          await window._buckLoadScript(
-            'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
-          );
+        var worker = await window._buckGetTesseractWorker();
+        if (!worker) return '';
+        var mime = base64Image.startsWith('iVBOR')
+          ? 'image/png'
+          : (base64Image.startsWith('UklGR') ? 'image/webp' : 'image/jpeg');
+        var rawUrl = 'data:' + mime + ';base64,' + base64Image;
+
+        var cleanUrl = await window._buckPreprocessReceiptCanvas(rawUrl, false);
+        var result = await worker.recognize(cleanUrl);
+        var text = (result && result.data && result.data.text) ? result.data.text.trim() : '';
+
+        // Dark-mode digital receipts or faint captures fall back to inverted contrast pass.
+        if (text.length < 16) {
+          var invUrl = await window._buckPreprocessReceiptCanvas(rawUrl, true);
+          var invResult = await worker.recognize(invUrl);
+          var invText = (invResult && invResult.data && invResult.data.text) ? invResult.data.text.trim() : '';
+          if (invText.length > text.length) {
+            text = invText;
+          }
         }
-        if (!window.Tesseract) return '';
-        var mime = base64Image.startsWith('iVBOR') ? 'image/png' : 'image/jpeg';
-        var result = await window.Tesseract.recognize(
-          'data:' + mime + ';base64,' + base64Image,
-          'eng'
-        );
-        return (result && result.data && result.data.text) ? result.data.text : '';
+        return text;
       } catch (e) {
         console.warn('Buck web OCR failed:', e);
         return '';

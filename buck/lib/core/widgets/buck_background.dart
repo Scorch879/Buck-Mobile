@@ -31,7 +31,7 @@ class BuckBackground extends StatelessWidget {
           // so it transitions smoothly into the #2B1309 browser bar chrome.
           Positioned.fill(
             child: Image.asset(
-              'assets/images/background_waves.png',
+              'assets/images/background_waves.jpg',
               fit: BoxFit.cover,
               alignment: const Alignment(0, -0.45),
               errorBuilder: (context, error, stackTrace) {

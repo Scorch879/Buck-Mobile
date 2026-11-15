@@ -53,6 +53,10 @@ void main() {
       await tester.tap(find.byKey(const Key('scanner_flash_button')));
       await tester.pump();
       expect(find.bySemanticsLabel('Turn flash off'), findsOneWidget);
+
+      // Viewfinder is a portrait receipt rectangle (height > width)
+      final viewfinderBox = tester.getSize(find.byType(AspectRatio).first);
+      expect(viewfinderBox.height, greaterThan(viewfinderBox.width));
     });
 
     testWidgets(
@@ -152,6 +156,96 @@ GRAND TOTAL        1,120.00
         assessment.qualityWarning,
         'Image text unclear - please retake with flash or proceed manually',
       );
+    });
+
+    test('parses SM Supermarket BIR receipt ignoring permit Date Issued & Cash', () {
+      const realSmReceipt = '''
+*** OFFICIAL RECEIPT ***
+SM SUPERMARKET - AURA
+OPERATED BY SUPERVALUE INC.
+VAT REG TIN: 000-158-246-000
+MIN: 190451284192837
+DATE: 11/14/2026  TIME: 17:42
+2x NESTLE FRESH MILK      198.00V
+1x GARDENIA CLASSIC        82.50V
+TOTAL ITEMS: 3
+VATABLE SALES             250.45
+12% VAT                    30.05
+AMOUNT DUE                280.50
+CASH                      500.00
+CHANGE                    219.50
+BIR PTU No.: FP042021-116-000
+Date Issued: 01/15/2021
+Valid Until: 01/15/2026
+''';
+
+      final parsed = ReceiptOcrProcessor.parseReceiptText(realSmReceipt);
+      expect(parsed.merchantName, 'SM Supermarket - Aura');
+      expect(parsed.date, DateTime(2026, 11, 14));
+      expect(parsed.totalAmount, 280.50);
+      expect(parsed.vatableSales, 250.45);
+      expect(parsed.evatAmount, 30.05);
+      expect(parsed.evatWasExplicit, isTrue);
+      expect(parsed.categoryName, 'Food');
+    });
+
+    test('parses noisy thermal OCR typos (7-Eleven T0TAL, OO cents, GCash)', () {
+      const realSevenEleven = '''
+================================
+7-ELEVEN PHILIPPINES
+STORE #2145 MAKATI AVE
+11-12-2026 09:15 AM
+GULP 22OZ                  49.OO
+SIOPAO ASADO               55.00
+BOTTLED WATER              45.00
+SUBT0TAL                  133.04
+12% VAT                    15.96
+T0TAL                 Php 149.OO
+GCASH                     149.00
+CHANGE                      0.00
+''';
+
+      final parsed = ReceiptOcrProcessor.parseReceiptText(realSevenEleven);
+      expect(parsed.merchantName, '7-Eleven Philippines');
+      expect(parsed.date, DateTime(2026, 11, 12));
+      expect(parsed.totalAmount, 149.00);
+      expect(parsed.vatableSales, 133.04);
+      expect(parsed.evatAmount, 15.96);
+      expect(parsed.categoryName, 'Food');
+    });
+
+    test('parses Mercury Drug split-line column receipt and flags unreadable photos', () async {
+      const realMercury = '''
+OPERATED BY MERCURY DRUG CORP.
+MERCURY DRUG - GREENBELT
+TRANSDATE: Nov 10, 2026
+BIOFLU TAB 10S             85.00
+ASCORBIC ACID             245.50
+VATABLE SALES
+295.09
+VAT AMOUNT
+35.41
+TOTAL AMOUNT DUE
+330.50
+''';
+
+      final parsed = ReceiptOcrProcessor.parseReceiptText(realMercury);
+      expect(parsed.merchantName, 'Mercury Drug - Greenbelt');
+      expect(parsed.date, DateTime(2026, 11, 10));
+      expect(parsed.totalAmount, 330.50);
+      expect(parsed.evatAmount, 35.41);
+      expect(parsed.vatableSales, 295.09);
+      expect(parsed.categoryName, 'Health & Wellness');
+
+      // Real unreadable bytes must NOT fabricate Fresh Mart 842.50 dummy data
+      final unreadable = await ReceiptOcrProcessor.processReceipt(
+        imageBytes: Uint8List.fromList(List.filled(128, 20)),
+        sourceName: 'IMG_20261115_120000.jpg',
+      );
+      expect(unreadable.usedNativeOcr, isFalse);
+      expect(unreadable.parsed.totalAmount, 0);
+      expect(unreadable.parsed.merchantName, 'Unreadable receipt');
+      expect(unreadable.quality?.isLowQuality, isTrue);
     });
   });
 

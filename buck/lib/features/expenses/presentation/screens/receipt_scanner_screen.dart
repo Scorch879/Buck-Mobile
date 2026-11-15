@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -144,6 +145,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   @override
   void initState() {
     super.initState();
+    AppLayout.pushDarkBarSurface();
     WidgetsBinding.instance.addObserver(this);
     if (widget.enableLiveCamera) {
       _initCamera();
@@ -152,6 +154,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
 
   @override
   void dispose() {
+    AppLayout.popDarkBarSurface();
     _focusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _disposeCamera();
@@ -348,20 +351,16 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 90,
+        imageQuality: 95,
       );
       if (picked == null || !mounted) return;
-
-      setState(() {
-        _capturing = true;
-        _statusMessage = 'Running on-device OCR...';
-      });
 
       final bytes = await picked.readAsBytes();
       if (!mounted) return;
       setState(() {
+        _capturing = true;
         _capturedBytes = bytes;
-        _statusMessage = 'Receipt captured!';
+        _statusMessage = 'Running on-device OCR...';
       });
 
       final output = await ReceiptOcrProcessor.processReceipt(
@@ -416,7 +415,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         if (mounted) {
           setState(() {
             _capturedBytes = bytes;
-            _statusMessage = 'Receipt captured!';
+            _statusMessage = 'Running on-device OCR...';
           });
         }
       } catch (_) {
@@ -431,7 +430,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         final XFile? captured = await _imagePicker.pickImage(
           source: ImageSource.camera,
           preferredCameraDevice: CameraDevice.rear,
-          imageQuality: 90,
+          imageQuality: 95,
         );
         if (captured == null) {
           if (mounted) {
@@ -448,7 +447,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         if (mounted) {
           setState(() {
             _capturedBytes = bytes;
-            _statusMessage = 'Receipt captured!';
+            _statusMessage = 'Running on-device OCR...';
           });
         }
       } catch (_) {
@@ -484,54 +483,67 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   @override
   Widget build(BuildContext context) {
     final topSafe = AppLayout.topSafeInset(context);
+    final leftSafe = AppLayout.leftSafeInset(context);
+    final rightSafe = AppLayout.rightSafeInset(context);
+    final browserBar = AppLayout.webSafeInsetsNotifier.value.browserBarBottom;
+    final bottomSafe = math.max(
+      AppLayout.bottomSafeInset(context),
+      browserBar > 0 ? browserBar * 0.45 : 0.0,
+    );
 
     return Scaffold(
       backgroundColor: _bgDark,
       extendBody: true,
       body: Padding(
-        padding: EdgeInsets.only(top: topSafe),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 1. Scanner toolbar (Figma #2480:679)
-                _buildToolbar(),
+        padding: EdgeInsets.fromLTRB(leftSafe, topSafe, rightSafe, 0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 680;
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Scanner toolbar (Figma #2480:679)
+                    _buildToolbar(compact: compact),
 
-                // 2. Framing instructions (Figma #2480:689)
-                _buildFramingInstructions(),
+                    // 2. Framing instructions (Figma #2480:689)
+                    _buildFramingInstructions(compact: compact),
 
-                // 3. Viewfinder surround & Camera preview (Figma #2480:692 / #2480:693)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 480),
-                        child: _buildCameraPreview(),
+                    // 3. Rectangular receipt viewfinder (#2480:692 / #2480:693)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compact ? 24 : 28,
+                        ),
+                        child: Center(
+                          child: _buildCameraPreview(),
+                        ),
                       ),
                     ),
-                  ),
+
+                    // 4. Capture controls (Figma #2480:700)
+                    _buildCaptureControls(compact: compact),
+
+                    // 5. System / Safari bottom safe spacing
+                    SizedBox(
+                      height: bottomSafe > 0 ? bottomSafe + 10 : 14,
+                    ),
+                  ],
                 ),
-
-                // 4. Capture controls (Figma #2480:700)
-                _buildCaptureControls(),
-
-                // 5. System / Android navigation gesture bar (Figma #2480:715)
-                _buildBottomGestureBar(context),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  /// Figma "Scanner toolbar" (#2480:679): height 76px, padding 0 24px.
-  Widget _buildToolbar() {
+  /// Figma "Scanner toolbar" (#2480:679): height 76px (62px compact), padding 0 24px.
+  Widget _buildToolbar({bool compact = false}) {
     return SizedBox(
-      height: 76,
+      height: compact ? 62 : 76,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Row(
@@ -610,10 +622,10 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     );
   }
 
-  /// Figma "Framing instructions" (#2480:689): padding 12px 24px 24px, gap 7px.
-  Widget _buildFramingInstructions() {
+  /// Figma "Framing instructions" (#2480:689).
+  Widget _buildFramingInstructions({bool compact = false}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      padding: EdgeInsets.fromLTRB(24, compact ? 4 : 12, 24, compact ? 10 : 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -641,60 +653,68 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     );
   }
 
-  /// Figma "Camera preview" (#2480:693): borderRadius 28px, fill #2A1914, border 1px #68402B.
+  /// Portrait receipt rectangle camera viewfinder (#2480:693).
+  ///
+  /// Uses a tall 0.68 receipt aspect ratio so the alignment guides match real
+  /// vertical receipts rather than squishing into a square, and renders captured/
+  /// selected photos at consistent un-cropped bounds.
   Widget _buildCameraPreview() {
-    return Container(
-      width: double.infinity,
-      height: 480,
-      decoration: BoxDecoration(
-        color: _previewBg,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _strokeBrown, width: 1),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(27),
-        child: LayoutBuilder(
-          builder: (context, constraints) => GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTapUp: (details) =>
-                _handleFocusTap(details, constraints.biggest),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 1. Live camera feed or clean viewfinder backdrop (#2480:694)
-                _buildViewportFeed(),
+    return AspectRatio(
+      aspectRatio: 0.68,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _previewBg,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: _strokeBrown, width: 1),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(27),
+          child: LayoutBuilder(
+            builder: (context, constraints) => GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTapUp: (details) =>
+                  _handleFocusTap(details, constraints.biggest),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 1. Live camera feed, full uncropped photo, or viewfinder backdrop
+                  _buildViewportFeed(),
 
-                // 2. Peripheral dimming (#2480:695)
-                const IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        stops: [0.0, 0.23, 0.73, 1.0],
-                        colors: [
-                          Color(0x70100B09),
-                          Color(0x00100B09),
-                          Color(0x00100B09),
-                          Color(0x70100B09),
-                        ],
+                  // 2. Peripheral dimming (#2480:695)
+                  const IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: [0.0, 0.22, 0.74, 1.0],
+                          colors: [
+                            Color(0x66100B09),
+                            Color(0x00100B09),
+                            Color(0x00100B09),
+                            Color(0x66100B09),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // 3. Receipt alignment guides (#2480:696)
-                IgnorePointer(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(52, 35, 52, 75),
-                    child: CustomPaint(
-                      painter: _ReceiptAlignmentGuidesPainter(
-                        color: _accentOrange,
-                        strokeWidth: 3,
+                  // 3. Tall rectangular receipt alignment guides (#2480:696)
+                  IgnorePointer(
+                    child: AnimatedOpacity(
+                      opacity: _capturedBytes == null ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 160),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(26, 20, 26, 58),
+                        child: CustomPaint(
+                          painter: _ReceiptAlignmentGuidesPainter(
+                            color: _accentOrange,
+                            strokeWidth: 3,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
                 // 3b. Tap-to-focus reticle indicator
                 if (_focusPoint != null)
@@ -767,14 +787,18 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
           ),
         ),
       ),
+    ),
     );
   }
 
   Widget _buildViewportFeed() {
     if (_capturedBytes != null) {
-      return Image.memory(
-        _capturedBytes!,
-        fit: BoxFit.cover,
+      return ColoredBox(
+        color: const Color(0xFF140D0A),
+        child: Image.memory(
+          _capturedBytes!,
+          fit: BoxFit.contain,
+        ),
       );
     }
 
@@ -899,10 +923,10 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     );
   }
 
-  /// Figma "Capture controls" (#2480:700): padding 22px 24px 0px, gap 18px.
-  Widget _buildCaptureControls() {
+  /// Figma "Capture controls" (#2480:700).
+  Widget _buildCaptureControls({bool compact = false}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+      padding: EdgeInsets.fromLTRB(24, compact ? 12 : 20, 24, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1069,12 +1093,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     );
   }
 
-  Widget _buildBottomGestureBar(BuildContext context) {
-    final bottomPadding = AppLayout.bottomSafeInset(context);
-    return SizedBox(
-      height: bottomPadding > 0 ? bottomPadding + 8 : 16,
-    );
-  }
+  // Seamless bottom spacing handled directly via AppLayout safe insets in build().
 }
 
 /// Draws the 4 rounded L-shaped alignment corner brackets from Figma (#2480:696).

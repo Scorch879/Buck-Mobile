@@ -1,18 +1,42 @@
+import 'dart:async' show unawaited;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'core/services/supabase_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_layout.dart';
 import 'features/auth/presentation/auth_gate.dart';
+import 'features/settings/data/settings_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Warm Inter/Manrope weights and persisted settings concurrently with
+  // Supabase initialization so initial screen transitions do not stall on fonts.
+  unawaited(SettingsService.instance.ensureLoaded());
+  unawaited(
+    GoogleFonts.pendingFonts([
+      GoogleFonts.inter(fontWeight: FontWeight.w400),
+      GoogleFonts.inter(fontWeight: FontWeight.w600),
+      GoogleFonts.inter(fontWeight: FontWeight.w700),
+      GoogleFonts.inter(fontWeight: FontWeight.w800),
+      GoogleFonts.manrope(fontWeight: FontWeight.w500),
+      GoogleFonts.manrope(fontWeight: FontWeight.w600),
+      GoogleFonts.manrope(fontWeight: FontWeight.w700),
+      GoogleFonts.manrope(fontWeight: FontWeight.w800),
+    ]).catchError((_) => const <void>[]),
+  );
+
   // Enable edge-to-edge rendering so notched phones and gesture navigation bars
   // do not show solid black letterbox bars at the top or bottom.
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  await Future.wait([
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
+    SupabaseService.initialize().catchError((Object e) {
+      debugPrint('Supabase initialization error: $e');
+    }),
+  ]);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -25,13 +49,6 @@ Future<void> main() async {
       systemNavigationBarContrastEnforced: false,
     ),
   );
-
-  // Initialize shared Supabase backend (Mono database architecture with Web)
-  try {
-    await SupabaseService.initialize();
-  } catch (e) {
-    debugPrint('Supabase initialization error: $e');
-  }
 
   AppLayout.initWebSafeInsetsListener();
 

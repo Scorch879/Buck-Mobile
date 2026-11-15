@@ -344,31 +344,46 @@ class ReceiptOcrProcessor {
   );
 
   static final RegExp _explicitEvatRegex = RegExp(
-    r'(?:12%\s*VAT|E-?VAT|VAT\s*Amount|VAT\s*\(12%\)|ADD:\s*12%\s*VAT|VAT\s*12%)[:\s₱PpHh]*([0-9]{1,3}(?:,[0-9]{3})*\.[0-9]{2}|[0-9]+\.[0-9]{2})',
+    r'(?:12%\s*V[A4]T|E-?V[A4]T|V[A4]T\s*AM[O0]UNT|V[A4]T\s*AMT|V[A4]T\s*\(12%\)|ADD:\s*12%\s*V[A4]T|LESS:\s*12%\s*V[A4]T|V[A4]T\s*12%)\s*[:=\s₱PpHh]*([0-9Oo]{1,3}(?:,[0-9Oo]{3})*[.,][0-9Oo]{2}|[0-9Oo]+[.,][0-9Oo]{2})',
     caseSensitive: false,
   );
 
   static final RegExp _currencyRegex = RegExp(
-    r'(?:₱|PHP|Php|P\s*)?([0-9]{1,3}(?:,[0-9]{3})*\.[0-9]{2}|[0-9]+\.[0-9]{2})',
+    r'(?:₱|PHP|Php|P\s*)?([0-9Oo]{1,3}(?:,[0-9Oo]{3})*(?:\s*[.,]\s*[0-9Oo]{2})|[0-9Oo]+(?:\s*[.,]\s*[0-9Oo]{2}))(?:\s*[VvAa*])?',
   );
 
   static final RegExp _totalKeywordRegex = RegExp(
-    r'\b(?:GRAND\s*TOTAL|TOTAL\s*AMOUNT\s*DUE|NET\s*AMOUNT\s*DUE|AMOUNT\s*DUE|NET\s*DUE|BALANCE\s*DUE|AMOUNT\s*PAYABLE|TOTAL\s*PAYABLE|TOTAL\s*SALES|TOTAL\s*AMT|TOTAL)\b',
+    r'\b(?:GRAND\s*T[O0]T[A4][LI]|T[O0]T[A4][LI]\s*AM[O0]UNT\s*DUE|NET\s*AM[O0]UNT\s*DUE|AM[O0]UNT\s*DUE|T[O0]T[A4][LI]\s*DUE|NET\s*DUE|BALANCE\s*DUE|AM[O0]UNT\s*PAYABLE|T[O0]T[A4][LI]\s*PAYABLE|NET\s*T[O0]T[A4][LI]|T[O0]T[A4][LI]\s*SALES|T[O0]T[A4][LI]\s*AMT|T[O0]T[A4][LI]\s*(?:PHP|P)?|INVOICE\s*T[O0]T[A4][LI]|ORDER\s*T[O0]T[A4][LI])\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _highPriorityTotalRegex = RegExp(
+    r'\b(?:GRAND\s*T[O0]T[A4][LI]|T[O0]T[A4][LI]\s*AM[O0]UNT\s*DUE|NET\s*AM[O0]UNT\s*DUE|AM[O0]UNT\s*DUE|T[O0]T[A4][LI]\s*DUE|NET\s*T[O0]T[A4][LI]|AM[O0]UNT\s*PAYABLE|T[O0]T[A4][LI]\s*PAYABLE)\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _tenderKeywordRegex = RegExp(
+    r'\b(?:GCASH|MAYA|PAYMAYA|VISA|MASTERCARD|AMEX|CREDIT\s*CARD|DEBIT\s*CARD|CARD\s*PAYMENT|E-?WALLET|QRPH|QR\s*PH|AMOUNT\s*PAID|PAID)\b',
     caseSensitive: false,
   );
 
   static final RegExp _excludedTotalLineRegex = RegExp(
-    r'\b(?:SUB[\s-]*TOTAL|VATABLE|VAT[\s-]*EXEMPT|ZERO[\s-]*RATED|VAT\s*AMOUNT|12%\s*VAT|E-?VAT|DISCOUNT|SAVINGS|CASH|TENDERED|CHANGE|SERVICE\s*CHARGE|ITEMS?|QTY)\b',
+    r'\b(?:SUB[\s-]*T[O0]T[A4][LI]|V[A4]TABLE|VAT[\s-]*EXEMPT|ZERO[\s-]*RATED|V[A4]T\s*AM[O0]UNT|V[A4]T\s*AMT|12%\s*V[A4]T|E-?V[A4]T|LESS[\s:]*V[A4]T|DISCOUNT|SC[\s/]*PWD|SENIOR|PWD|SAVINGS|CASH|TENDERED|CHANGE|SUKLI|SERVICE\s*CHARGE|NO\.?\s*OF\s*ITEMS?|T[O0]T[A4][LI]\s*ITEMS?|T[O0]T[A4][LI]\s*QTY|ITEMS?|QTY|POINTS|REWARD)\b',
     caseSensitive: false,
   );
 
   static final RegExp _subtotalKeywordRegex = RegExp(
-    r'\b(?:SUB[\s-]*TOTAL|VATABLE\s*SALES?)\b',
+    r'\b(?:SUB[\s-]*T[O0]T[A4][LI]|V[A4]TABLE\s*SALES?|V[A4]T[\s-]*ABLE|V[A4]T\s*SALES|TAXABLE\s*(?:AMOUNT|SALES)?)\b',
     caseSensitive: false,
   );
 
   static final RegExp _boilerplateHeaderRegex = RegExp(
-    r'^(?:OFFICIAL\s*RECEIPT|SALES\s*INVOICE|COLLECTION\s*RECEIPT|ACKNOWLEDGEMENT|PROVISIONAL|VAT\s*REG|NON[\s-]*VAT|TIN[:\s#]|MIN[:\s#]|S/N[:\s#]|PTU[:\s#]|ACCR|OR\s*#|SI\s*#|INV\s*#|POS\s*\d|CASHIER|SERVER|DATE|TIME|TEL|FAX|MOBILE|THANK\s*YOU|THIS\s*SERVES)',
+    r'^(?:[\W_\d\s]+$|OFFICIAL\s*RECEIPT|SALES\s*INVOICE|COLLECTION\s*RECEIPT|ACKNOWLEDGEMENT|PROVISIONAL|POS\s*RECEIPT|CUSTOMER\s*COPY|MERCHANT\s*COPY|REPRINT|VAT\s*REG|NON[\s-]*VAT|OPERATED\s*BY|OWNED\s*(?:&|AND)\s*OPERATED|MANAGED\s*BY|TIN[\s:#]|MIN[\s:#]|S/?N[\s:#]|SERIAL[\s:#]|PTU[\s:#]|ACCR|BIR\s*PERMIT|PERMIT[\s:#]|OR\s*#|SI\s*#|INV\s*#|TXN[\s:#]|TRANS[\s:#]|RECEIPT\s*NO|STORE\s*#|POS\s*\d|TERMINAL|CASHIER|SERVER|CREW|DATE\s*ISSUED|VALID\s*UNTIL|DATE|TIME|TEL|TELEPHONE|FAX|MOBILE|EMAIL|WWW\.|HTTP|BRGY\.|BARANGAY|STREET|ST\.|AVE\.|BLDG\.|FLOOR|MALL|MAKATI\s*CITY|MANILA|QUEZON\s*CITY|TAGUIG|CEBU|DAVAO|PHILIPPINES|WELCOME|THANK\s*YOU|THIS\s*SERVES)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _birFooterDateRegex = RegExp(
+    r'\b(?:DATE\s*ISSUED|ISSUED\s*DATE|VALID\s*UNTIL|ACCR(?:EDITATION)?|PTU|PERMIT\s*NO)\b',
     caseSensitive: false,
   );
 
@@ -386,25 +401,46 @@ class ReceiptOcrProcessor {
     'burger king': 'Food',
     'pizza hut': 'Food',
     'shakey': 'Food',
+    'yellow cab': 'Food',
+    'army navy': 'Food',
+    'max\'s': 'Food',
+    'maxs restaurant': 'Food',
+    'andok': 'Food',
+    'baliwag': 'Food',
+    'botejyu': 'Food',
     'dunkin': 'Food',
     'krispy kreme': 'Food',
     'tim hortons': 'Food',
     'pickup coffee': 'Food',
     'zus coffee': 'Food',
+    'gong cha': 'Food',
+    'coco fresh': 'Food',
+    'potato corner': 'Food',
+    'pan de manila': 'Food',
     'sm supermarket': 'Food',
     'sm hypermarket': 'Food',
+    'savemore': 'Food',
     'puregold': 'Food',
     'robinsons supermarket': 'Food',
+    'waltermart': 'Food',
+    'metro supermarket': 'Food',
+    'shopwise': 'Food',
+    'rustan': 'Food',
     '7-eleven': 'Food',
     '7 eleven': 'Food',
     'uncle john': 'Food',
+    'ministop': 'Food',
     'alfamart': 'Food',
     'lawson': 'Food',
     'familymart': 'Food',
+    'allday': 'Food',
+    'grabfood': 'Food',
+    'foodpanda': 'Food',
     's&r': 'Shopping',
     'landers': 'Shopping',
     'sm store': 'Shopping',
     'sm department': 'Shopping',
+    'sm retail': 'Shopping',
     'robinsons': 'Shopping',
     'uniqlo': 'Shopping',
     'lazada': 'Shopping',
@@ -412,6 +448,8 @@ class ReceiptOcrProcessor {
     'ace hardware': 'Shopping',
     'handyman': 'Shopping',
     'true value': 'Shopping',
+    'power mac': 'Shopping',
+    'datablitz': 'Shopping',
     'mercury drug': 'Health & Wellness',
     'watsons': 'Health & Wellness',
     'southstar drug': 'Health & Wellness',
@@ -421,9 +459,14 @@ class ReceiptOcrProcessor {
     'shell': 'Transportation',
     'petron': 'Transportation',
     'caltex': 'Transportation',
+    'seaoil': 'Transportation',
+    'unioil': 'Transportation',
+    'cleanfuel': 'Transportation',
     'grab': 'Transportation',
     'angkas': 'Transportation',
     'joyride': 'Transportation',
+    'cebu pacific': 'Transportation',
+    'philippine airlines': 'Transportation',
     'meralco': 'Bills & Utilities',
     'maynilad': 'Bills & Utilities',
     'manila water': 'Bills & Utilities',
@@ -432,6 +475,7 @@ class ReceiptOcrProcessor {
     'smart': 'Bills & Utilities',
     'converge': 'Bills & Utilities',
     'national book store': 'Education',
+    'fully booked': 'Education',
   };
 
   static const Map<String, int> _monthLookup = {
@@ -472,8 +516,11 @@ class ReceiptOcrProcessor {
 
     final merchant = _extractMerchant(lines);
     final date = _extractDate(lines, fallbackDate: fallbackDate);
-    final totalAmount = _extractTotalAmount(lines);
     final subtotalAmount = _extractSubtotalAmount(lines);
+    final totalAmount = _extractTotalAmount(
+      lines,
+      subtotalAmount: subtotalAmount,
+    );
 
     double? explicitEvat;
     final explicitMatch = _explicitEvatRegex.firstMatch(sanitizedText);
@@ -544,6 +591,36 @@ class ReceiptOcrProcessor {
     );
 
     final bool usedNative = nativeText != null && nativeText.trim().isNotEmpty;
+    final bool hasImageBytes = imageBytes != null && imageBytes.isNotEmpty;
+
+    if (!usedNative && hasImageBytes) {
+      stopwatch.stop();
+      final cleanLabel = _cleanSourceLabel(sourceName);
+      return ReceiptPipelineOutput(
+        parsed: ParsedReceiptData(
+          merchantName: cleanLabel ?? 'Unreadable receipt',
+          totalAmount: 0,
+          subtotalAmount: null,
+          evatAmount: 0,
+          vatableSales: 0,
+          date: DateTime.now(),
+          categoryName: 'Other',
+          rawText: '',
+          evatWasExplicit: false,
+        ),
+        quality: ImageQualityAssessment(
+          meanLuminance: quality?.meanLuminance ?? 0,
+          sharpnessVariance: quality?.sharpnessVariance ?? 0,
+          foregroundRatio: quality?.foregroundRatio ?? 0,
+          isLowQuality: true,
+          qualityWarning:
+              'Could not read receipt text clearly — retake with flash or enter details manually.',
+        ),
+        processingTimeMs: stopwatch.elapsedMilliseconds,
+        usedNativeOcr: false,
+      );
+    }
+
     final String effectiveText = usedNative
         ? nativeText
         : _buildFallbackReceiptText(sourceName: sourceName);
@@ -560,6 +637,25 @@ class ReceiptOcrProcessor {
       processingTimeMs: stopwatch.elapsedMilliseconds,
       usedNativeOcr: usedNative,
     );
+  }
+
+  static String? _cleanSourceLabel(String? sourceName) {
+    if (sourceName == null || sourceName.trim().isEmpty) return null;
+    final cleanName = sanitizePii(
+      sourceName
+          .replaceAll(RegExp(r'\.[A-Za-z0-9]{2,5}$'), '')
+          .replaceAll(RegExp(r'[_]+'), ' ')
+          .trim(),
+    );
+    if (cleanName.isEmpty) return null;
+    // Generic camera/gallery filenames (e.g. image_picker_1234, IMG_001) add noise.
+    if (RegExp(
+      r'^(?:image|img|photo|pxl|dsc|scaled|cap)[\s\-0-9]*$',
+      caseSensitive: false,
+    ).hasMatch(cleanName)) {
+      return null;
+    }
+    return cleanName;
   }
 
   static String _buildFallbackReceiptText({String? sourceName}) {
@@ -601,9 +697,20 @@ TOTAL AMOUNT DUE 842.50
     if (lines.isEmpty) return 'Scanned Receipt';
 
     // First look for known Philippine retail merchants near the top
-    final searchLimit = math.min(lines.length, 6);
+    final searchLimit = math.min(lines.length, 12);
     for (var i = 0; i < searchLimit; i++) {
       final line = lines[i];
+      if (_boilerplateHeaderRegex.hasMatch(line)) continue;
+      final lower = line.toLowerCase();
+      for (final keyword in _knownPhMerchants.keys) {
+        if (lower.contains(keyword)) {
+          return _formatMerchantDisplay(line);
+        }
+      }
+    }
+
+    // Also allow known merchants anywhere if header was noisy/truncated
+    for (final line in lines) {
       if (_boilerplateHeaderRegex.hasMatch(line)) continue;
       final lower = line.toLowerCase();
       for (final keyword in _knownPhMerchants.keys) {
@@ -618,9 +725,11 @@ TOTAL AMOUNT DUE 842.50
       if (line.length < 3) continue;
       if (_boilerplateHeaderRegex.hasMatch(line)) continue;
       if (!RegExp(r'[A-Za-z]{2,}').hasMatch(line)) continue;
-      // Skip lines that are purely a date or monetary line
+      // Skip lines that are purely a date, price, or summary keyword
       if (_totalKeywordRegex.hasMatch(line) ||
-          _subtotalKeywordRegex.hasMatch(line)) {
+          _subtotalKeywordRegex.hasMatch(line) ||
+          _excludedTotalLineRegex.hasMatch(line) ||
+          _currencyRegex.hasMatch(line)) {
         continue;
       }
       return _formatMerchantDisplay(line);
@@ -653,10 +762,14 @@ TOTAL AMOUNT DUE 842.50
           if (preserveUpper.contains(word.toUpperCase())) {
             return word.toUpperCase();
           }
-          if (word.length <= 1 || !RegExp(r'^[A-Z]').hasMatch(word)) {
+          if (word.length <= 1 || !RegExp(r'[A-Z]{2,}').hasMatch(word)) {
             return word;
           }
-          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+          return word.replaceAllMapped(RegExp(r'[A-Za-z]+'), (m) {
+            final seg = m.group(0)!;
+            if (seg.length == 1) return seg.toUpperCase();
+            return seg[0].toUpperCase() + seg.substring(1).toLowerCase();
+          });
         })
         .join(' ');
   }
@@ -682,10 +795,14 @@ TOTAL AMOUNT DUE 842.50
       r'\b(\d{1,2})[-/](\d{1,2})[-/]((?:20)?\d{2})\b',
     );
 
-    // Search DATE-labeled lines first, then scan all lines
+    // Exclude BIR permit/accreditation footer lines ("Date Issued", "Valid Until")
+    // from date priority so transaction dates always win over POS permit dates.
+    final txDateLines = lines.where((l) => !_birFooterDateRegex.hasMatch(l)).toList();
+    final footerDateLines = lines.where(_birFooterDateRegex.hasMatch).toList();
     final prioritized = [
-      ...lines.where((l) => l.toUpperCase().contains('DATE')),
-      ...lines.where((l) => !l.toUpperCase().contains('DATE')),
+      ...txDateLines.where((l) => l.toUpperCase().contains('DATE')),
+      ...txDateLines.where((l) => !l.toUpperCase().contains('DATE')),
+      ...footerDateLines,
     ];
 
     for (final line in prioritized) {
@@ -772,43 +889,75 @@ TOTAL AMOUNT DUE 842.50
     return candidate.isAfter(maxDate) ? maxDate : candidate;
   }
 
-  static double _extractTotalAmount(List<String> lines) {
-    double? labeledTotal;
+  static double _extractTotalAmount(
+    List<String> lines, {
+    double? subtotalAmount,
+  }) {
+    double? highPriorityTotal;
+    double? generalTotal;
+    double? tenderTotal;
 
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
-      if (_excludedTotalLineRegex.hasMatch(line) &&
-          !RegExp(
-            r'\b(?:GRAND\s*TOTAL|TOTAL\s*AMOUNT\s*DUE|NET\s*AMOUNT\s*DUE|AMOUNT\s*DUE)\b',
-            caseSensitive: false,
-          ).hasMatch(line)) {
+      final isHighPriority = _highPriorityTotalRegex.hasMatch(line);
+      if (_excludedTotalLineRegex.hasMatch(line) && !isHighPriority) {
         continue;
       }
 
       if (_totalKeywordRegex.hasMatch(line)) {
-        final onSameLine = _lastCurrencyOnLine(line);
-        if (onSameLine != null && onSameLine > 0) {
-          labeledTotal = onSameLine;
-          continue;
-        }
-        if (i + 1 < lines.length &&
-            !_excludedTotalLineRegex.hasMatch(lines[i + 1])) {
-          final onNextLine = _lastCurrencyOnLine(lines[i + 1]);
-          if (onNextLine != null && onNextLine > 0) {
-            labeledTotal = onNextLine;
+        double? found = _lastCurrencyOnLine(line);
+        if (found == null || found <= 0) {
+          for (var lookahead = 1;
+              lookahead <= 2 && i + lookahead < lines.length;
+              lookahead++) {
+            final nextLine = lines[i + lookahead];
+            if (_excludedTotalLineRegex.hasMatch(nextLine) ||
+                _totalKeywordRegex.hasMatch(nextLine)) {
+              break;
+            }
+            final candidate = _lastCurrencyOnLine(nextLine);
+            if (candidate != null && candidate > 0) {
+              found = candidate;
+              break;
+            }
           }
+        }
+        if (found != null && found > 0) {
+          if (isHighPriority) {
+            highPriorityTotal = found;
+          } else {
+            generalTotal = found;
+          }
+        }
+      } else if (_tenderKeywordRegex.hasMatch(line)) {
+        final paid = _lastCurrencyOnLine(line);
+        if (paid != null && paid > 0) {
+          tenderTotal = paid;
         }
       }
     }
 
-    if (labeledTotal != null && labeledTotal > 0) {
-      return double.parse(labeledTotal.toStringAsFixed(2));
+    // Prefer explicit Grand Total / Amount Due; if general TOTAL disagrees strongly
+    // with subtotal while tender agrees, trust the higher consistent match.
+    var chosen = highPriorityTotal ?? generalTotal ?? tenderTotal;
+    if (highPriorityTotal == null &&
+        generalTotal != null &&
+        subtotalAmount != null &&
+        generalTotal < subtotalAmount &&
+        tenderTotal != null &&
+        tenderTotal >= subtotalAmount) {
+      chosen = tenderTotal;
+    }
+
+    if (chosen != null && chosen > 0) {
+      return double.parse(chosen.toStringAsFixed(2));
     }
 
     // Fallback: pick largest monetary decimal amount excluding change/cash lines
     var maxAmount = 0.0;
     for (final line in lines) {
-      if (RegExp(r'\b(?:CHANGE|TENDERED|SAVED)\b', caseSensitive: false)
+      if (RegExp(r'\b(?:CASH|CHANGE|SUKLI|TENDERED|SAVED|DISCOUNT)\b',
+              caseSensitive: false)
           .hasMatch(line)) {
         continue;
       }
@@ -844,7 +993,7 @@ TOTAL AMOUNT DUE 842.50
 
   static double? _extractEvatFromNeighborLines(List<String> lines) {
     final vatLabelOnly = RegExp(
-      r'^(?:12%\s*VAT|E-?VAT|VAT\s*Amount|VAT\s*\(12%\)|ADD:\s*12%\s*VAT|VAT\s*12%)\s*:?$',
+      r'^(?:12%\s*V[A4]T|E-?V[A4]T|V[A4]T\s*AM[O0]UNT|V[A4]T\s*AMT|V[A4]T\s*\(12%\)|ADD:\s*12%\s*V[A4]T|LESS:\s*12%\s*V[A4]T|V[A4]T\s*12%)\s*:?$',
       caseSensitive: false,
     );
     for (var i = 0; i < lines.length - 1; i++) {
@@ -865,7 +1014,17 @@ TOTAL AMOUNT DUE 842.50
   }
 
   static double? _parseCurrencyToken(String raw) {
-    final normalized = raw.replaceAll(',', '').trim();
+    var normalized = raw
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll('O', '0')
+        .replaceAll('o', '0')
+        .trim();
+    // Handle European / noisy OCR decimal comma when followed by exactly 2 cents digits.
+    if (RegExp(r'^[0-9]+,[0-9]{2}$').hasMatch(normalized)) {
+      normalized = normalized.replaceFirst(',', '.');
+    } else {
+      normalized = normalized.replaceAll(',', '');
+    }
     return double.tryParse(normalized);
   }
 

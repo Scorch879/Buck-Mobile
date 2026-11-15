@@ -59,6 +59,8 @@ abstract class FinanceDataSource {
 /// Row Level Security limits every query to the signed-in user's rows.
 class FinanceRepository implements FinanceDataSource {
   final SupabaseClient _client;
+  final Map<String, String> _categoryIdsByName = {};
+  String? _cachedCategoryUserId;
 
   FinanceRepository(this._client);
 
@@ -184,19 +186,29 @@ class FinanceRepository implements FinanceDataSource {
     required DateTime spentOn,
   }) async {
     final userId = _userId;
-    String? categoryId;
-    try {
-      final cat = await _client
-          .from('categories')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('kind', 'expense')
-          .ilike('name', categoryName.trim())
-          .maybeSingle();
-      if (cat != null) {
-        categoryId = cat['id'] as String?;
-      }
-    } catch (_) {}
+    if (_cachedCategoryUserId != userId) {
+      _cachedCategoryUserId = userId;
+      _categoryIdsByName.clear();
+    }
+    final normalizedCat = categoryName.trim().toLowerCase();
+    var categoryId = _categoryIdsByName[normalizedCat];
+    if (categoryId == null) {
+      try {
+        final cat = await _client
+            .from('categories')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('kind', 'expense')
+            .ilike('name', categoryName.trim())
+            .maybeSingle();
+        if (cat != null) {
+          categoryId = cat['id'] as String?;
+          if (categoryId != null) {
+            _categoryIdsByName[normalizedCat] = categoryId;
+          }
+        }
+      } catch (_) {}
+    }
 
     await _client.from('expenses').insert({
       'user_id': userId,
