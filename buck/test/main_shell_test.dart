@@ -177,5 +177,50 @@ void main() {
     expect(find.text('Enter an amount greater than 0.'), findsOneWidget);
     expect(fake.addedExpenses, isEmpty);
   });
+
+  testWidgets('Swiping horizontally navigates tabs and header/left-edge swipe opens side panel', (
+    tester,
+  ) async {
+    await pumpShell(tester, source());
+
+    // Start on Home tab (index 2). Swipe left on PageView -> Stats (index 3).
+    await tester.fling(find.byType(PageView), const Offset(-320, 0), 900);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<BuckFooterNav>(find.byType(BuckFooterNav)).activeTab,
+      BuckTab.stats,
+    );
+
+    // Swipe right on PageView -> Home (index 2).
+    await tester.fling(find.byType(PageView), const Offset(320, 0), 900);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<BuckFooterNav>(find.byType(BuckFooterNav)).activeTab,
+      BuckTab.home,
+    );
+
+    // Scrub across BuckFooterNav pill -> Wallet tab.
+    final navRect = tester.getRect(find.byType(BuckFooterNav));
+    await tester.dragFrom(navRect.center, Offset(-navRect.width * 0.42, 0));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<BuckFooterNav>(find.byType(BuckFooterNav)).activeTab,
+      BuckTab.wallet,
+    );
+
+    // Swipe right from the left edge -> opens ProfileSidePanel.
+    await tester.flingFrom(const Offset(8, 300), const Offset(160, 0), 800);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('profile_side_panel')), findsOneWidget);
+
+    // Swipe left on ProfileSidePanel -> dismisses panel.
+    await tester.fling(
+      find.byKey(const Key('profile_side_panel')),
+      const Offset(-220, 0),
+      900,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('profile_side_panel')), findsNothing);
+  });
 }
 

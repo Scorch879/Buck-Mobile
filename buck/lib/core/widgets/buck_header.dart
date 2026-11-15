@@ -11,8 +11,14 @@ import '../theme/app_text_styles.dart';
 class BuckHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onMenuTap;
+  final VoidCallback? onSwipeOpenMenu;
 
-  const BuckHeader({super.key, required this.title, this.onMenuTap});
+  const BuckHeader({
+    super.key,
+    required this.title,
+    this.onMenuTap,
+    this.onSwipeOpenMenu,
+  });
 
   static const double height = 56;
 
@@ -20,8 +26,18 @@ class BuckHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = AppLayout.topSafeInset(context);
 
-    return Container(
-      height: topInset + height,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      excludeFromSemantics: true,
+      onHorizontalDragEnd: onSwipeOpenMenu == null
+          ? null
+          : (details) {
+              if ((details.primaryVelocity ?? 0) > 220) {
+                onSwipeOpenMenu!();
+              }
+            },
+      child: Container(
+        height: topInset + height,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -69,6 +85,7 @@ class BuckHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

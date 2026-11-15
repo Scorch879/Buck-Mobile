@@ -1,11 +1,21 @@
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_layout.dart';
+import '../../../settings/data/settings_service.dart';
+import '../../../settings/presentation/screens/appearance_screen.dart';
+import '../../../settings/presentation/screens/danger_zone_screen.dart';
+import '../../../settings/presentation/screens/feedback_screen.dart';
+import '../../../settings/presentation/screens/profile_account_screen.dart';
+import '../../../settings/presentation/screens/security_screen.dart';
+import '../../../settings/presentation/screens/settings_menu_screen.dart';
+import '../../../settings/presentation/widgets/settings_common.dart';
+import '../../../settings/presentation/widgets/settings_dialogs.dart';
 
 /// Destination actions available inside [ProfileSidePanel].
 enum ProfilePanelDestination {
@@ -25,8 +35,22 @@ Future<void> showProfileSidePanel({
   required String email,
   required String connectionLabel,
   required Future<void> Function() onSignOut,
+  BuckSettingsContext? settingsContext,
+  VoidCallback? onProfileUpdated,
   void Function(String message)? onShowMessage,
 }) {
+  final effectiveContext =
+      settingsContext ??
+      BuckSettingsContext(
+        displayName: displayName,
+        email: email,
+        connectionLabel: connectionLabel,
+        providerName: connectionLabel.toLowerCase().contains('google')
+            ? 'Google'
+            : 'Buck Auth',
+        isGoogleManaged: connectionLabel.toLowerCase().contains('google'),
+      );
+
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -35,10 +59,10 @@ Future<void> showProfileSidePanel({
     transitionDuration: const Duration(milliseconds: 240),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _ProfileSidePanelOverlay(
-        displayName: displayName,
-        email: email,
-        connectionLabel: connectionLabel,
+        settingsContext: effectiveContext,
+        hostNavigator: Navigator.of(context),
         onSignOut: onSignOut,
+        onProfileUpdated: onProfileUpdated,
         onShowMessage: onShowMessage,
       );
     },
@@ -60,17 +84,17 @@ Future<void> showProfileSidePanel({
 }
 
 class _ProfileSidePanelOverlay extends StatefulWidget {
-  final String displayName;
-  final String email;
-  final String connectionLabel;
+  final BuckSettingsContext settingsContext;
+  final NavigatorState hostNavigator;
   final Future<void> Function() onSignOut;
+  final VoidCallback? onProfileUpdated;
   final void Function(String message)? onShowMessage;
 
   const _ProfileSidePanelOverlay({
-    required this.displayName,
-    required this.email,
-    required this.connectionLabel,
+    required this.settingsContext,
+    required this.hostNavigator,
     required this.onSignOut,
+    this.onProfileUpdated,
     this.onShowMessage,
   });
 
@@ -79,7 +103,8 @@ class _ProfileSidePanelOverlay extends StatefulWidget {
       _ProfileSidePanelOverlayState();
 }
 
-class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
+class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
+    with SingleTickerProviderStateMixin {
   static const _panelCardBg = Color(0xFF392519);
   static const _panelTileBg = Color(0xFF241710);
   static const _panelBorder = Color(0xFF483126);
@@ -89,52 +114,102 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
   bool _settingsExpanded = false;
   bool _dangerExpanded = false;
 
-  void _closeAndNotify(String message) {
-    Navigator.of(context).pop();
-    widget.onShowMessage?.call(message);
+  double _dragOffsetX = 0.0;
+  late final AnimationController _snapBackController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+  );
+  Animation<double>? _snapBackAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    AppLayout.pushDarkBarSurface();
+    SettingsService.instance.ensureLoaded();
+    _snapBackController.addListener(() {
+      final anim = _snapBackAnim;
+      if (anim != null && mounted) {
+        setState(() => _dragOffsetX = anim.value);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _snapBackController.dispose();
+    AppLayout.popDarkBarSurface();
+    super.dispose();
+  }
+
+  void _handleDrawerDragUpdate(DragUpdateDetails details, double panelWidth) {
+    if (_snapBackController.isAnimating) {
+      _snapBackController.stop();
+    }
+    setState(() {
+      _dragOffsetX = (_dragOffsetX + details.delta.dx).clamp(-panelWidth, 0.0);
+    });
+  }
+
+  void _handleDrawerDragEnd(DragEndDetails details, double panelWidth) {
+    final velocity = details.primaryVelocity ?? 0.0;
+    if (velocity < -280 || _dragOffsetX < -panelWidth * 0.30) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _snapBackAnim = Tween<double>(begin: _dragOffsetX, end: 0.0).animate(
+      CurvedAnimation(parent: _snapBackController, curve: Curves.easeOutCubic),
+    );
+    _snapBackController.forward(from: 0.0);
   }
 
   Future<void> _confirmAndSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => const _SignOutConfirmDialog(),
-    );
+    final confirmed = await showSignOutConfirmationDialog(context);
     if (confirmed != true || !mounted) return;
     Navigator.of(context).pop();
     await widget.onSignOut();
   }
 
-  Future<void> _openSectionSheet(ProfilePanelDestination destination) async {
-    final action = await showModalBottomSheet<_DetailSheetAction>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return _ProfileDetailSheet(
-          destination: destination,
-          displayName: widget.displayName,
-          email: widget.email,
-          connectionLabel: widget.connectionLabel,
-        );
-      },
+  Future<void> _handleDeletionConfirmed() async {
+    widget.hostNavigator.popUntil((route) => route.isFirst);
+    widget.onShowMessage?.call(
+      'Account deletion confirmation instructions have been queued.',
     );
+    await widget.onSignOut();
+  }
 
-    if (!mounted || action == null) return;
-    switch (action.type) {
-      case _DetailActionType.signOut:
-        await _confirmAndSignOut();
+  void _openScreen(ProfilePanelDestination destination) {
+    Navigator.of(context).pop();
+    late final Widget screen;
+    switch (destination) {
+      case ProfilePanelDestination.profileAccount:
+        screen = ProfileAccountScreen(
+          settingsContext: widget.settingsContext,
+          onProfileUpdated: widget.onProfileUpdated,
+        );
         break;
-      case _DetailActionType.message:
-        if (action.message != null) {
-          _closeAndNotify(action.message!);
-        }
+      case ProfilePanelDestination.security:
+        screen = SecurityScreen(settingsContext: widget.settingsContext);
         break;
-      case _DetailActionType.navigate:
-        if (action.nextDestination != null) {
-          await _openSectionSheet(action.nextDestination!);
-        }
+      case ProfilePanelDestination.appearance:
+        screen = const AppearanceScreen();
+        break;
+      case ProfilePanelDestination.feedback:
+        screen = const FeedbackScreen();
+        break;
+      case ProfilePanelDestination.settingsMenu:
+        screen = SettingsMenuScreen(
+          settingsContext: widget.settingsContext,
+          onSignOut: widget.onSignOut,
+          onProfileUpdated: widget.onProfileUpdated,
+        );
+        break;
+      case ProfilePanelDestination.dangerZone:
+        screen = DangerZoneScreen(
+          onDeletionConfirmed: _handleDeletionConfirmed,
+        );
         break;
     }
+    widget.hostNavigator.push(CupertinoPageRoute<void>(builder: (_) => screen));
   }
 
   @override
@@ -142,63 +217,78 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
     final size = MediaQuery.sizeOf(context);
     final topInset = AppLayout.topSafeInset(context);
     final bottomInset = AppLayout.bottomSafeInset(context);
+    final leftInset = AppLayout.leftSafeInset(context);
     final panelWidth = math.min(378.0, size.width * 0.88);
 
     return Align(
       alignment: Alignment.centerLeft,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          key: const Key('profile_side_panel'),
-          width: panelWidth,
-          height: size.height,
+      child: Transform.translate(
+        offset: Offset(_dragOffsetX, 0),
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          excludeFromSemantics: true,
+          onHorizontalDragUpdate: (d) => _handleDrawerDragUpdate(d, panelWidth),
+          onHorizontalDragEnd: (d) => _handleDrawerDragEnd(d, panelWidth),
+          onHorizontalDragCancel: () {
+            if (_dragOffsetX != 0.0) {
+              _handleDrawerDragEnd(DragEndDetails(), panelWidth);
+            }
+          },
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              key: const Key('profile_side_panel'),
+              width: panelWidth,
+              height: double.infinity,
           decoration: const BoxDecoration(
             color: AppColors.navBarBg,
             border: Border(
               right: BorderSide(color: AppColors.glassCardBorder, width: 1),
             ),
           ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              14,
-              math.max(48.0, topInset + 16.0),
-              14,
-              math.max(24.0, bottomInset + 16.0),
-            ),
-            child: Column(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  math.max(14.0, leftInset + 10.0),
+                  math.max(48.0, topInset + 16.0),
+                  14,
+                  math.max(36.0, bottomInset + 20.0),
+                ),
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _ProfileAccountCard(
-                  displayName: widget.displayName,
-                  email: widget.email,
-                  connectionLabel: widget.connectionLabel,
+                  displayName: widget.settingsContext.displayName,
+                  email: widget.settingsContext.email,
+                  connectionLabel: widget.settingsContext.connectionLabel,
                   expanded: _accountExpanded,
                   onToggleExpand: () {
                     setState(() => _accountExpanded = !_accountExpanded);
                   },
                   onManageAccount: () =>
-                      _openSectionSheet(ProfilePanelDestination.profileAccount),
+                      _openScreen(ProfilePanelDestination.profileAccount),
                   onSignOutTap: _confirmAndSignOut,
                 ),
                 const SizedBox(height: 20),
                 _ShortcutsSection(
                   onSecurityTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.security),
+                      _openScreen(ProfilePanelDestination.security),
                   onAppearanceTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.appearance),
+                      _openScreen(ProfilePanelDestination.appearance),
                   onFeedbackTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.feedback),
+                      _openScreen(ProfilePanelDestination.feedback),
                 ),
                 const SizedBox(height: 20),
                 _NavigationTileGrid(
                   onProfileTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.profileAccount),
+                      _openScreen(ProfilePanelDestination.profileAccount),
                   onSecurityTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.security),
+                      _openScreen(ProfilePanelDestination.security),
                   onAppearanceTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.appearance),
+                      _openScreen(ProfilePanelDestination.appearance),
                   onFeedbackTap: () =>
-                      _openSectionSheet(ProfilePanelDestination.feedback),
+                      _openScreen(ProfilePanelDestination.feedback),
                 ),
                 if (_showMoreExpanded) ...[
                   const SizedBox(height: 12),
@@ -224,15 +314,14 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
                         _ExpandedActionRow(
                           iconPath: 'assets/icons/profile_panel_settings.svg',
                           label: 'Open Full Settings',
-                          onTap: () => _openSectionSheet(
-                            ProfilePanelDestination.settingsMenu,
-                          ),
+                          onTap: () =>
+                              _openScreen(ProfilePanelDestination.settingsMenu),
                         ),
                         const SizedBox(height: 8),
                         _ExpandedActionRow(
                           iconPath: 'assets/icons/profile_panel_log_out.svg',
                           label: 'Sign out of Buck',
-                          labelColor: const Color(0xFFFF9B91),
+                          labelColor: SettingsColors.dangerTitle,
                           onTap: _confirmAndSignOut,
                         ),
                       ],
@@ -268,62 +357,64 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
                           });
                         },
                       ),
-                      AnimatedCrossFade(
-                        firstChild: const SizedBox.shrink(),
-                        secondChild: Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: _panelCardBg.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: _panelBorder, width: 1),
-                            ),
-                            child: Column(
-                              children: [
-                                _ExpandedActionRow(
-                                  iconPath:
-                                      'assets/icons/profile_panel_user_round.svg',
-                                  label: 'Profile & Account',
-                                  onTap: () => _openSectionSheet(
-                                    ProfilePanelDestination.profileAccount,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                _ExpandedActionRow(
-                                  iconPath:
-                                      'assets/icons/profile_panel_shield_check.svg',
-                                  label: 'Security & Connected Apps',
-                                  onTap: () => _openSectionSheet(
-                                    ProfilePanelDestination.security,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                _ExpandedActionRow(
-                                  iconPath:
-                                      'assets/icons/profile_panel_palette.svg',
-                                  label: 'Appearance & Theme',
-                                  onTap: () => _openSectionSheet(
-                                    ProfilePanelDestination.appearance,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                _ExpandedActionRow(
-                                  iconPath:
-                                      'assets/icons/profile_panel_settings.svg',
-                                  label: 'All Settings',
-                                  onTap: () => _openSectionSheet(
-                                    ProfilePanelDestination.settingsMenu,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        crossFadeState: _settingsExpanded
-                            ? CrossFadeState.showSecond
-                            : CrossFadeState.showFirst,
+                      AnimatedSize(
                         duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: _settingsExpanded
+                            ? Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: _panelCardBg.withValues(alpha: 0.45),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _panelBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _ExpandedActionRow(
+                                        iconPath:
+                                            'assets/icons/profile_panel_user_round.svg',
+                                        label: 'Profile & Account',
+                                        onTap: () => _openScreen(
+                                          ProfilePanelDestination.profileAccount,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _ExpandedActionRow(
+                                        iconPath:
+                                            'assets/icons/profile_panel_shield_check.svg',
+                                        label: 'Security & Connected Apps',
+                                        onTap: () => _openScreen(
+                                          ProfilePanelDestination.security,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _ExpandedActionRow(
+                                        iconPath:
+                                            'assets/icons/profile_panel_palette.svg',
+                                        label: 'Appearance & Theme',
+                                        onTap: () => _openScreen(
+                                          ProfilePanelDestination.appearance,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      _ExpandedActionRow(
+                                        iconPath:
+                                            'assets/icons/profile_panel_settings.svg',
+                                        label: 'All Settings',
+                                        onTap: () => _openScreen(
+                                          ProfilePanelDestination.settingsMenu,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                       const Divider(
                         height: 1,
@@ -342,31 +433,35 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
                           });
                         },
                       ),
-                      AnimatedCrossFade(
-                        firstChild: const SizedBox.shrink(),
-                        secondChild: Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _SignOutGradientButton(onTap: _confirmAndSignOut),
-                              const SizedBox(height: 8),
-                              _ExpandedActionRow(
-                                iconPath:
-                                    'assets/icons/profile_panel_triangle_alert.svg',
-                                label: 'Account deletion & sensitive actions',
-                                labelColor: const Color(0xFFFF9B91),
-                                onTap: () => _openSectionSheet(
-                                  ProfilePanelDestination.dangerZone,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        crossFadeState: _dangerExpanded
-                            ? CrossFadeState.showSecond
-                            : CrossFadeState.showFirst,
+                      AnimatedSize(
                         duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: _dangerExpanded
+                            ? Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    SettingsRedButton(
+                                      label: 'Sign out',
+                                      onTap: _confirmAndSignOut,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _ExpandedActionRow(
+                                      iconPath:
+                                          'assets/icons/profile_panel_triangle_alert.svg',
+                                      label:
+                                          'Account deletion & sensitive actions',
+                                      labelColor: SettingsColors.dangerTitle,
+                                      onTap: () => _openScreen(
+                                        ProfilePanelDestination.dangerZone,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -374,6 +469,44 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay> {
               ],
             ),
           ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: math.max(24.0, topInset + 14.0),
+                child: const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [AppColors.navBarBg, Color(0x00100B09)],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: math.max(24.0, bottomInset + 14.0),
+                child: const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [AppColors.navBarBg, Color(0x00100B09)],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
         ),
       ),
     );
@@ -420,20 +553,33 @@ class _ProfileAccountCard extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.inputBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _borderColor, width: 1),
-                    ),
-                    alignment: Alignment.center,
-                    child: SvgPicture.asset(
-                      'assets/icons/profile_panel_user_round.svg',
-                      width: 24,
-                      height: 24,
-                    ),
+                  ValueListenableBuilder(
+                    valueListenable: SettingsService.instance.customAvatarBytes,
+                    builder: (context, bytes, _) {
+                      return Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.inputBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _borderColor, width: 1),
+                          image: bytes != null
+                              ? DecorationImage(
+                                  image: MemoryImage(bytes),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: bytes == null
+                            ? SvgPicture.asset(
+                                'assets/icons/profile_panel_user_round.svg',
+                                width: 24,
+                                height: 24,
+                              )
+                            : null,
+                      );
+                    },
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -489,29 +635,35 @@ class _ProfileAccountCard extends StatelessWidget {
               ),
             ),
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Divider(height: 1, thickness: 1, color: _borderColor),
-                  const SizedBox(height: 10),
-                  _ExpandedActionRow(
-                    iconPath: 'assets/icons/profile_panel_user_round.svg',
-                    label: 'Manage Profile & Account',
-                    onTap: onManageAccount,
-                  ),
-                  const SizedBox(height: 8),
-                  _SignOutGradientButton(onTap: onSignOutTap),
-                ],
-              ),
-            ),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+          AnimatedSize(
             duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            child: expanded
+                ? Container(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: _borderColor,
+                        ),
+                        const SizedBox(height: 10),
+                        _ExpandedActionRow(
+                          iconPath: 'assets/icons/profile_panel_user_round.svg',
+                          label: 'Manage Profile & Account',
+                          onTap: onManageAccount,
+                        ),
+                        const SizedBox(height: 8),
+                        SettingsRedButton(
+                          label: 'Sign out',
+                          onTap: onSignOutTap,
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
           Container(
             height: 42,
@@ -916,823 +1068,6 @@ class _ExpandedActionRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SignOutGradientButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _SignOutGradientButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Ink(
-          height: 48,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            gradient: const LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xFFAC2530),
-                Color(0xFFC42F3A),
-                Color(0xFFD13945),
-              ],
-            ),
-          ),
-          child: Center(
-            child: Text(
-              'Sign out',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                height: 20 / 14,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-enum _DetailActionType { signOut, message, navigate }
-
-class _DetailSheetAction {
-  final _DetailActionType type;
-  final String? message;
-  final ProfilePanelDestination? nextDestination;
-
-  const _DetailSheetAction.signOut()
-      : type = _DetailActionType.signOut,
-        message = null,
-        nextDestination = null;
-
-  const _DetailSheetAction.message(this.message)
-      : type = _DetailActionType.message,
-        nextDestination = null;
-
-  const _DetailSheetAction.navigate(this.nextDestination)
-      : type = _DetailActionType.navigate,
-        message = null;
-}
-
-class _ProfileDetailSheet extends StatefulWidget {
-  final ProfilePanelDestination destination;
-  final String displayName;
-  final String email;
-  final String connectionLabel;
-
-  const _ProfileDetailSheet({
-    required this.destination,
-    required this.displayName,
-    required this.email,
-    required this.connectionLabel,
-  });
-
-  @override
-  State<_ProfileDetailSheet> createState() => _ProfileDetailSheetState();
-}
-
-class _ProfileDetailSheetState extends State<_ProfileDetailSheet> {
-  final _searchController = TextEditingController();
-  final _feedbackTitleController = TextEditingController();
-  final _feedbackDetailsController = TextEditingController();
-  final _deleteConfirmController = TextEditingController();
-
-  String _selectedFeedbackCategory = 'Feature idea';
-  String _selectedTheme = 'Dark';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _feedbackTitleController.dispose();
-    _feedbackDetailsController.dispose();
-    _deleteConfirmController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Container(
-      margin: EdgeInsets.only(top: 64),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
-      decoration: const BoxDecoration(
-        color: AppColors.navBarBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          top: BorderSide(color: AppColors.glassCardBorder, width: 1),
-        ),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF241710),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF483126)),
-                    ),
-                    alignment: Alignment.center,
-                    child: SvgPicture.asset(
-                      'assets/icons/profile_panel_arrow_left.svg',
-                      width: 20,
-                      height: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _sheetTitle(widget.destination),
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _sheetSubtitle(widget.destination),
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 18),
-            _buildBody(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _sheetTitle(ProfilePanelDestination d) {
-    switch (d) {
-      case ProfilePanelDestination.profileAccount:
-        return 'Profile & Account';
-      case ProfilePanelDestination.security:
-        return 'Security';
-      case ProfilePanelDestination.appearance:
-        return 'Appearance';
-      case ProfilePanelDestination.feedback:
-        return 'Feedback';
-      case ProfilePanelDestination.settingsMenu:
-        return 'Settings';
-      case ProfilePanelDestination.dangerZone:
-        return 'Danger Zone';
-    }
-  }
-
-  String _sheetSubtitle(ProfilePanelDestination d) {
-    switch (d) {
-      case ProfilePanelDestination.profileAccount:
-        return 'Your details, your personal touch.';
-      case ProfilePanelDestination.security:
-        return 'Your account, protected.';
-      case ProfilePanelDestination.appearance:
-        return 'A look that feels like you.';
-      case ProfilePanelDestination.feedback:
-        return 'Spotted a bug or have an idea? Tell us — we read every note.';
-      case ProfilePanelDestination.settingsMenu:
-        return 'Make yourself at home.';
-      case ProfilePanelDestination.dangerZone:
-        return 'Sensitive actions. Take a moment.';
-    }
-  }
-
-  Widget _buildBody(BuildContext context) {
-    switch (widget.destination) {
-      case ProfilePanelDestination.profileAccount:
-        return _buildProfileAccount();
-      case ProfilePanelDestination.security:
-        return _buildSecurity();
-      case ProfilePanelDestination.appearance:
-        return _buildAppearance();
-      case ProfilePanelDestination.feedback:
-        return _buildFeedback();
-      case ProfilePanelDestination.settingsMenu:
-        return _buildSettingsMenu();
-      case ProfilePanelDestination.dangerZone:
-        return _buildDangerZone();
-    }
-  }
-
-  Widget _buildProfileAccount() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF241710),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF483126)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.inputBg,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF483126)),
-                ),
-                alignment: Alignment.center,
-                child: SvgPicture.asset(
-                  'assets/icons/profile_panel_user_round.svg',
-                  width: 26,
-                  height: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.displayName,
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.email,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.connectionLabel,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryOrange,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SignOutGradientButton(
-          onTap: () =>
-              Navigator.of(context).pop(const _DetailSheetAction.signOut()),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecurity() {
-    final isGoogle = widget.connectionLabel.toLowerCase().contains('google');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _InfoCard(
-          icon: Icons.verified_user_outlined,
-          title: isGoogle ? 'Protected by Google' : 'Account Protection',
-          subtitle: isGoogle
-              ? 'Your sign-in security is managed in your Google account.'
-              : 'Your session is authenticated through Supabase Auth.',
-        ),
-        const SizedBox(height: 10),
-        _InfoCard(
-          icon: Icons.mail_outline_rounded,
-          title: 'Email address',
-          subtitle: widget.email,
-        ),
-        const SizedBox(height: 10),
-        _InfoCard(
-          icon: Icons.lock_outline_rounded,
-          title: 'Password',
-          subtitle: isGoogle
-              ? 'Password is managed by Google. Use your Google account settings to update credentials.'
-              : 'Use Reset Password from the sign-in screen whenever you want to rotate your password.',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAppearance() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Theme',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _ThemeOptionCard(
-                label: 'Light',
-                icon: Icons.wb_sunny_outlined,
-                selected: _selectedTheme == 'Light',
-                onTap: () => setState(() => _selectedTheme = 'Light'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ThemeOptionCard(
-                label: 'Dark',
-                icon: Icons.nightlight_round,
-                selected: _selectedTheme == 'Dark',
-                onTap: () => setState(() => _selectedTheme = 'Dark'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          '$_selectedTheme is currently selected.${_selectedTheme == 'Light' ? ' Buck Amber Dark remains default across mobile shell screens.' : ''}',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFeedback() {
-    const categories = [
-      'Feature idea',
-      'Bug report',
-      'Question issue',
-      'General feedback',
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: categories.map((cat) {
-            final selected = _selectedFeedbackCategory == cat;
-            return ChoiceChip(
-              label: Text(cat),
-              selected: selected,
-              onSelected: (_) => setState(() => _selectedFeedbackCategory = cat),
-              selectedColor: AppColors.primaryOrange,
-              backgroundColor: const Color(0xFF241710),
-              labelStyle: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.black : AppColors.textPrimary,
-              ),
-              side: BorderSide(
-                color: selected
-                    ? AppColors.primaryOrange
-                    : const Color(0xFF483126),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _feedbackTitleController,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'A short summary',
-            hintStyle: const TextStyle(color: AppColors.textSecondary),
-            filled: true,
-            fillColor: AppColors.inputBg,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF483126)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _feedbackDetailsController,
-          maxLines: 3,
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Tell us what you would change or like to see...',
-            hintStyle: const TextStyle(color: AppColors.textSecondary),
-            filled: true,
-            fillColor: AppColors.inputBg,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF483126)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryOrange,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () {
-              final title = _feedbackTitleController.text.trim();
-              Navigator.of(context).pop(
-                _DetailSheetAction.message(
-                  title.isEmpty
-                      ? 'Thanks for sharing $_selectedFeedbackCategory feedback!'
-                      : 'Feedback sent: "$title"',
-                ),
-              );
-            },
-            child: const Text(
-              'Send feedback',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettingsMenu() {
-    final query = _searchController.text.trim().toLowerCase();
-    final entries = [
-      (
-        title: 'Profile & Account',
-        subtitle: 'Your details, all in one place.',
-        iconPath: 'assets/icons/profile_panel_user_round.svg',
-        dest: ProfilePanelDestination.profileAccount,
-      ),
-      (
-        title: 'Security',
-        subtitle: 'Password & account protection',
-        iconPath: 'assets/icons/profile_panel_shield_check.svg',
-        dest: ProfilePanelDestination.security,
-      ),
-      (
-        title: 'Appearance',
-        subtitle: 'Make it look like you',
-        iconPath: 'assets/icons/profile_panel_palette.svg',
-        dest: ProfilePanelDestination.appearance,
-      ),
-      (
-        title: 'Feedback',
-        subtitle: 'Help shape what comes next',
-        iconPath: 'assets/icons/profile_panel_message_square.svg',
-        dest: ProfilePanelDestination.feedback,
-      ),
-      (
-        title: 'Danger Zone',
-        subtitle: 'Sensitive account actions',
-        iconPath: 'assets/icons/profile_panel_triangle_alert.svg',
-        dest: ProfilePanelDestination.dangerZone,
-      ),
-    ].where((entry) {
-      if (query.isEmpty) return true;
-      return entry.title.toLowerCase().contains(query) ||
-          entry.subtitle.toLowerCase().contains(query);
-    }).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _searchController,
-          onChanged: (_) => setState(() {}),
-          style: const TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: AppColors.textSecondary,
-            ),
-            hintText: 'Search settings',
-            hintStyle: const TextStyle(color: AppColors.textSecondary),
-            filled: true,
-            fillColor: AppColors.inputBg,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...entries.map((entry) {
-          final isDanger = entry.dest == ProfilePanelDestination.dangerZone;
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-            leading: SvgPicture.asset(entry.iconPath, width: 20, height: 20),
-            title: Text(
-              entry.title,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDanger
-                    ? const Color(0xFFFF9B91)
-                    : AppColors.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              entry.subtitle,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
-            ),
-            onTap: () =>
-                Navigator.of(context).pop(_DetailSheetAction.navigate(entry.dest)),
-          );
-        }),
-        const SizedBox(height: 12),
-        _SignOutGradientButton(
-          onTap: () =>
-              Navigator.of(context).pop(const _DetailSheetAction.signOut()),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDangerZone() {
-    final canRequest = _deleteConfirmController.text.trim() == 'DELETE';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF241710),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF6B2A2E)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Delete account',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFFF9B91),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Buck sends a confirmation email first. After confirmation, your account enters a 10-day recovery window before permanent deletion.',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _deleteConfirmController,
-                onChanged: (_) => setState(() {}),
-                style: const TextStyle(color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Type DELETE to confirm',
-                  labelStyle: const TextStyle(color: AppColors.textSecondary),
-                  hintText: 'DELETE',
-                  hintStyle: const TextStyle(color: AppColors.textSecondary),
-                  filled: true,
-                  fillColor: AppColors.inputBg,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 46,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: canRequest
-                        ? const Color(0xFFC42F3A)
-                        : const Color(0xFF4A2528),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: canRequest
-                      ? () => Navigator.of(context).pop(
-                            const _DetailSheetAction.message(
-                              'Account deletion requests are handled via support@buck.app for safety.',
-                            ),
-                          )
-                      : null,
-                  child: const Text(
-                    'Request deletion',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        _SignOutGradientButton(
-          onTap: () =>
-              Navigator.of(context).pop(const _DetailSheetAction.signOut()),
-        ),
-      ],
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF241710),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF483126)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 22, color: AppColors.primaryOrange),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ThemeOptionCard extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ThemeOptionCard({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF241710),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? AppColors.primaryOrange
-                : const Color(0xFF483126),
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: selected
-                  ? AppColors.primaryOrange
-                  : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SignOutConfirmDialog extends StatelessWidget {
-  const _SignOutConfirmDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF241710),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF483126)),
-      ),
-      icon: SvgPicture.asset(
-        'assets/icons/profile_panel_triangle_alert.svg',
-        width: 28,
-        height: 28,
-      ),
-      title: Text(
-        'Sign out of Buck?',
-        textAlign: TextAlign.center,
-        style: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      content: Text(
-        "You'll need to sign in again to access your account. Your saved data will stay in your account.",
-        textAlign: TextAlign.center,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          color: AppColors.textSecondary,
-        ),
-      ),
-      actionsAlignment: MainAxisAlignment.center,
-      actions: [
-        OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.textPrimary,
-            side: const BorderSide(color: Color(0xFF483126)),
-          ),
-          child: const Text('Stay signed in'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFC42F3A),
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Sign out'),
-        ),
-      ],
     );
   }
 }

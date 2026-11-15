@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/dev_config.dart';
@@ -8,6 +10,7 @@ import '../../../core/widgets/buck_footer_nav.dart';
 import '../../../core/widgets/buck_header.dart';
 import '../../../core/widgets/buck_screen_background.dart';
 import '../../auth/data/auth_service.dart';
+import '../../settings/data/settings_service.dart';
 import 'widgets/profile_side_panel.dart';
 import '../../dashboard/presentation/screens/home_dashboard_screen.dart';
 import '../../dashboard/presentation/widgets/quick_actions_card.dart';
@@ -48,6 +51,9 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   final _authService = AuthService();
   late BuckTab _tab = widget.initialTab;
+  PageController? _pageController;
+  int? _programmaticPageTarget;
+  bool _menuOpen = false;
   late final FinanceController _finance =
       widget.financeController ??
       (SupabaseService.isInitialized
@@ -68,8 +74,13 @@ class _MainShellState extends State<MainShell> {
     _goals.start();
   }
 
+  PageController _ensurePageController() {
+    return _pageController ??= PageController(initialPage: _tab.index);
+  }
+
   @override
   void dispose() {
+    _pageController?.dispose();
     // Only dispose controllers this widget created.
     if (widget.financeController == null) _finance.dispose();
     if (widget.goalsController == null) _goals.dispose();
@@ -101,71 +112,84 @@ class _MainShellState extends State<MainShell> {
       );
   }
 
-  void _showMenuSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryOrange.withValues(alpha: 0.2),
-                      border: Border.all(color: AppColors.primaryOrange),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.person, color: AppColors.primaryOrange),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _welcomeTitle,
-                          style: AppTextStyles.h2.copyWith(fontSize: 16),
-                        ),
-                        Text(
-                          DevConfig.mockAdminSessionActive.value
-                              ? '${DevConfig.adminEmail} (Dev Mode)'
-                              : (_authService.currentUser?.email ?? ''),
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const Divider(color: AppColors.dividerColor),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Color(0xFFFF6B6B)),
-                title: const Text('Sign Out', style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w600)),
-                contentPadding: EdgeInsets.zero,
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  DevConfig.mockAdminSessionActive.value = false;
-                  await _authService.signOut();
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
+  String get _panelDisplayName {
+    final profileName = _finance.snapshot?.displayName;
+    if (profileName != null && profileName.trim().isNotEmpty) {
+      return profileName.trim();
+    }
+    final user = _authService.currentUser;
+    final metadata = user?.userMetadata ?? const {};
+    final name = (metadata['full_name'] ?? metadata['username']) as String?;
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+    if (DevConfig.mockAdminSessionActive.value) return 'Dev Admin';
+    final fallback = user?.email?.split('@').first;
+    return (fallback != null && fallback.isNotEmpty) ? fallback : 'Buck Account';
+  }
+
+  String get _panelEmail {
+    if (DevConfig.mockAdminSessionActive.value) {
+      return '${DevConfig.adminEmail} (Dev Mode)';
+    }
+    final email = _authService.currentUser?.email;
+    return (email != null && email.isNotEmpty) ? email : 'Signed in';
+  }
+
+  String get _panelConnectionLabel {
+    if (DevConfig.mockAdminSessionActive.value) {
+      return 'Connected in Dev Mode';
+    }
+    final user = _authService.currentUser;
+    final isGoogle = user?.appMetadata['provider'] == 'google' ||
+        (user?.identities?.any((id) => id.provider == 'google') ?? false);
+    if (isGoogle) return 'Connected with Google';
+    if (user != null) return 'Connected with Email';
+    return 'Connected with Buck';
+  }
+
+  BuckSettingsContext get _panelSettingsContext {
+    final isDevMode = DevConfig.mockAdminSessionActive.value;
+    final user = _authService.currentUser;
+    final isGoogle = !isDevMode &&
+        (user?.appMetadata['provider'] == 'google' ||
+            (user?.identities?.any((id) => id.provider == 'google') ?? false));
+    return BuckSettingsContext(
+      displayName: _panelDisplayName,
+      email: _panelEmail,
+      connectionLabel: _panelConnectionLabel,
+      providerName: isDevMode
+          ? 'Dev Mode'
+          : isGoogle
+              ? 'Google'
+              : 'Buck Auth',
+      isGoogleManaged: isGoogle,
+      isDevMode: isDevMode,
     );
+  }
+
+  void _showMenuSheet() {
+    if (_menuOpen) return;
+    _menuOpen = true;
+    showProfileSidePanel(
+      context: context,
+      displayName: _panelDisplayName,
+      email: _panelEmail,
+      connectionLabel: _panelConnectionLabel,
+      settingsContext: _panelSettingsContext,
+      onProfileUpdated: _finance.refresh,
+      onShowMessage: _showMessage,
+      onSignOut: () async {
+        DevConfig.mockAdminSessionActive.value = false;
+        await _authService.signOut();
+      },
+    ).whenComplete(() {
+      if (mounted) {
+        _menuOpen = false;
+      } else {
+        _menuOpen = false;
+      }
+    });
   }
 
   void _showComingSoon(String feature) =>
@@ -242,7 +266,23 @@ class _MainShellState extends State<MainShell> {
       });
       return;
     }
+    if (_tab == tab) return;
     setState(() => _tab = tab);
+    final pc = _pageController;
+    if (pc == null || !pc.hasClients) return;
+    if ((pc.page?.round() ?? _tab.index) == tab.index) return;
+    _programmaticPageTarget = tab.index;
+    pc
+        .animateToPage(
+          tab.index,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(() {
+          if (mounted && _programmaticPageTarget == tab.index) {
+            _programmaticPageTarget = null;
+          }
+        });
   }
 
   void _onQuickAction(QuickAction action) {
@@ -277,24 +317,54 @@ class _MainShellState extends State<MainShell> {
       }
       return _LoadError(message: error, onRetry: _finance.refresh);
     }
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 260),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.02),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
+
+    final controller = _ensurePageController();
+    return NotificationListener<OverscrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.axis == Axis.horizontal &&
+            _tab == BuckTab.wallet &&
+            notification.overscroll < -18) {
+          _showMenuSheet();
+        }
+        return false;
       },
-      child: _tab == BuckTab.expenses
-          ? KeyedSubtree(
+      child: ScrollConfiguration(
+        behavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: const {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+            PointerDeviceKind.stylus,
+          },
+        ),
+        child: PageView(
+          controller: controller,
+          onPageChanged: (index) {
+            if (_programmaticPageTarget != null) {
+              if (index == _programmaticPageTarget) {
+                _programmaticPageTarget = null;
+              }
+              return;
+            }
+            final nextTab = BuckTab.values[index];
+            if (_tab != nextTab) {
+              setState(() => _tab = nextTab);
+            }
+          },
+          children: [
+            KeyedSubtree(
+              key: const ValueKey(BuckTab.wallet),
+              child: WalletScreen(
+                snapshot: snapshot,
+                controller: _finance,
+                onRefresh: _finance.refresh,
+                onAddIncome: _addIncome,
+                onScanIncome: _scanIncomeReceipt,
+                onMessage: _showMessage,
+                bottomInset: contentInset,
+              ),
+            ),
+            KeyedSubtree(
               key: const ValueKey(BuckTab.expenses),
               child: ExpensesScreen(
                 snapshot: snapshot,
@@ -303,57 +373,45 @@ class _MainShellState extends State<MainShell> {
                 onScanReceipt: _scanReceipt,
                 bottomInset: contentInset,
               ),
-            )
-          : _tab == BuckTab.goals
-              ? KeyedSubtree(
-                  key: const ValueKey(BuckTab.goals),
-                  child: GoalsScreen(
-                    controller: _goals,
-                    activeWalletId: snapshot.activeWallet?.id,
-                    activeWalletBalance: snapshot.activeWallet?.balance,
-                    onRefresh: () async {
-                      await _finance.refresh();
-                      await _goals.refresh();
-                    },
-                    onAction: _showMessage,
-                    bottomInset: contentInset,
-                  ),
-                )
-              : _tab == BuckTab.stats
-                  ? KeyedSubtree(
-                      key: const ValueKey(BuckTab.stats),
-                      child: StatsScreen(
-                        snapshot: snapshot,
-                        onRefresh: _finance.refresh,
-                        bottomInset: contentInset,
-                      ),
-                    )
-                  : _tab == BuckTab.wallet
-                      ? KeyedSubtree(
-                          key: const ValueKey(BuckTab.wallet),
-                          child: WalletScreen(
-                            snapshot: snapshot,
-                            controller: _finance,
-                            onRefresh: _finance.refresh,
-                            onAddIncome: _addIncome,
-                            onScanIncome: _scanIncomeReceipt,
-                            onMessage: _showMessage,
-                            bottomInset: contentInset,
-                          ),
-                        )
-                      : KeyedSubtree(
-                          key: const ValueKey(BuckTab.home),
-                          child: HomeDashboardScreen(
-                        snapshot: snapshot,
-                        onQuickAction: _onQuickAction,
-                        onRefresh: _finance.refresh,
-                        onOpenReport: () => showAiReportDialog(
-                          context: context,
-                          onInsightUpdated: _finance.refresh,
-                        ),
-                        bottomInset: contentInset,
-                      ),
-                    ),
+            ),
+            KeyedSubtree(
+              key: const ValueKey(BuckTab.home),
+              child: HomeDashboardScreen(
+                snapshot: snapshot,
+                onQuickAction: _onQuickAction,
+                onRefresh: _finance.refresh,
+                onOpenReport: () => showAiReportDialog(
+                  context: context,
+                  onInsightUpdated: _finance.refresh,
+                ),
+                bottomInset: contentInset,
+              ),
+            ),
+            KeyedSubtree(
+              key: const ValueKey(BuckTab.stats),
+              child: StatsScreen(
+                snapshot: snapshot,
+                onRefresh: _finance.refresh,
+                bottomInset: contentInset,
+              ),
+            ),
+            KeyedSubtree(
+              key: const ValueKey(BuckTab.goals),
+              child: GoalsScreen(
+                controller: _goals,
+                activeWalletId: snapshot.activeWallet?.id,
+                activeWalletBalance: snapshot.activeWallet?.balance,
+                onRefresh: () async {
+                  await _finance.refresh();
+                  await _goals.refresh();
+                },
+                onAction: _showMessage,
+                bottomInset: contentInset,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -385,20 +443,21 @@ class _MainShellState extends State<MainShell> {
               BuckHeader(
                 title: _welcomeTitle,
                 onMenuTap: _showMenuSheet,
+                onSwipeOpenMenu: _showMenuSheet,
               ),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final height = constraints.maxHeight;
                     if (height <= 0) return const SizedBox.shrink();
-                    final fadeStart =
-                        ((height - footerBottom - BuckFooterNav.height - 16) /
+                    final fadeEnd =
+                        ((height - footerBottom - BuckFooterNav.height - 2) /
                                 height)
                             .clamp(0.0, 1.0);
-                    final fadeEnd =
-                        ((height - footerBottom - BuckFooterNav.height * 0.55) /
+                    final fadeStart =
+                        ((height - footerBottom - BuckFooterNav.height - 34) /
                                 height)
-                            .clamp(fadeStart, 1.0);
+                            .clamp(0.0, fadeEnd);
 
                     return ShaderMask(
                       blendMode: BlendMode.dstIn,
@@ -437,6 +496,24 @@ class _MainShellState extends State<MainShell> {
           Positioned.fill(
             child: AiFloatingChatBubble(
               bottomRestOffset: footerBottom + BuckFooterNav.height + 12,
+            ),
+          ),
+          // Left-edge swipe-right zone so users can pull the Profile Side Panel
+          // open from any tab without conflicting with full-width tab swipes or
+          // header menu taps.
+          Positioned(
+            left: 0,
+            top: AppLayout.topSafeInset(context) + BuckHeader.height,
+            bottom: 0,
+            width: 22,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              excludeFromSemantics: true,
+              onHorizontalDragEnd: (details) {
+                if ((details.primaryVelocity ?? 0) > 160) {
+                  _showMenuSheet();
+                }
+              },
             ),
           ),
         ],

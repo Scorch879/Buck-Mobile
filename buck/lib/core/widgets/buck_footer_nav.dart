@@ -27,7 +27,7 @@ class BuckFooterNav extends StatelessWidget {
 
   static const double _frameWidth = 440;
   static const double _barWidth = 416;
-  static const double _barHeight = 65;
+  static const double _barHeight = 64;
   static const double _barLeft = (_frameWidth - _barWidth) / 2;
   static const double _barTop = (height - _barHeight) / 2;
 
@@ -78,6 +78,15 @@ class BuckFooterNav extends StatelessWidget {
   // between icon centres in the Figma vector.
   static const List<double> _zoneEdges = [0, 101, 180, 254, 334, _frameWidth];
 
+  static BuckTab _tabForLocalX(double x) {
+    for (var i = 0; i < BuckTab.values.length; i++) {
+      if (x <= _zoneEdges[i + 1]) {
+        return BuckTab.values[i];
+      }
+    }
+    return BuckTab.goals;
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeMeta = _tabMetas[activeTab] ?? _tabMetas[BuckTab.home]!;
@@ -93,10 +102,21 @@ class BuckFooterNav extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.contain,
               alignment: Alignment.bottomCenter,
-              child: SizedBox(
-                width: _frameWidth,
-                height: height,
-                child: Stack(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                excludeFromSemantics: true,
+                onHorizontalDragStart: (details) {
+                  final target = _tabForLocalX(details.localPosition.dx);
+                  if (target != activeTab) onTabSelected(target);
+                },
+                onHorizontalDragUpdate: (details) {
+                  final target = _tabForLocalX(details.localPosition.dx);
+                  if (target != activeTab) onTabSelected(target);
+                },
+                child: SizedBox(
+                  width: _frameWidth,
+                  height: height,
+                  child: Stack(
                   clipBehavior: Clip.none,
                   children: [
               // 1. Navigation Bar Pill Container
@@ -181,6 +201,7 @@ class BuckFooterNav extends StatelessWidget {
             ],
           ),
         ),
+              ),
             ),
           ),
         ),

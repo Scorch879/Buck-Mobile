@@ -4,6 +4,9 @@ import 'dart:js_interop';
 @JS('buckGetSafeInsets')
 external JSString? _jsBuckGetSafeInsets();
 
+@JS('buckSetThemeColor')
+external void _jsBuckSetThemeColor(JSString hexColor);
+
 /// Web viewport safe-area and browser-toolbar insets measured from CSS
 /// `env(safe-area-inset-*)` and the difference between `100lvh` and `100svh`.
 class WebSafeInsets {
@@ -46,4 +49,10 @@ WebSafeInsets readWebSafeInsets() {
   } catch (_) {
     return WebSafeInsets.zero;
   }
+}
+
+void setWebThemeColor(String hexColor) {
+  try {
+    _jsBuckSetThemeColor(hexColor.toJS);
+  } catch (_) {}
 }

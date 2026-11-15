@@ -21,3 +21,5 @@ class WebSafeInsets {
 }
 
 WebSafeInsets readWebSafeInsets() => WebSafeInsets.zero;
+
+void setWebThemeColor(String hexColor) {}

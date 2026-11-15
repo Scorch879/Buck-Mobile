@@ -7,9 +7,33 @@ import 'web_safe_insets_stub.dart'
 
 export 'web_safe_insets_stub.dart'
     if (dart.library.js_interop) 'web_safe_insets_web.dart'
-    show WebSafeInsets, readWebSafeInsets;
+    show WebSafeInsets, readWebSafeInsets, setWebThemeColor;
 
 class AppLayout {
+  static const String shellThemeHex = '#2B1309';
+  static const String darkSurfaceThemeHex = '#100B09';
+  static int _darkBarSurfaceDepth = 0;
+
+  /// Switches the web browser chrome (`theme-color` & viewport background) to
+  /// `#100B09` while dark full-screen overlays/settings are mounted.
+  static void pushDarkBarSurface() {
+    _darkBarSurfaceDepth++;
+    if (_darkBarSurfaceDepth == 1) {
+      web_insets.setWebThemeColor(darkSurfaceThemeHex);
+    }
+  }
+
+  /// Restores the web browser chrome to `#2B1309` once all `#100B09`
+  /// overlays/settings routes are closed.
+  static void popDarkBarSurface() {
+    if (_darkBarSurfaceDepth > 0) {
+      _darkBarSurfaceDepth--;
+    }
+    if (_darkBarSurfaceDepth == 0) {
+      web_insets.setWebThemeColor(shellThemeHex);
+    }
+  }
+
   /// Maximum width of the main content column across phones and tablets.
   static const double contentMaxWidth = 600;
 
@@ -36,6 +60,20 @@ class AppLayout {
     final viewBottom = MediaQuery.viewPaddingOf(context).bottom;
     final webBottom = web_insets.readWebSafeInsets().bottom;
     return math.max(viewBottom, webBottom);
+  }
+
+  /// Effective left safe-area inset (landscape notch / Dynamic Island).
+  static double leftSafeInset(BuildContext context) {
+    final viewLeft = MediaQuery.viewPaddingOf(context).left;
+    final webLeft = web_insets.readWebSafeInsets().left;
+    return math.max(viewLeft, webLeft);
+  }
+
+  /// Effective right safe-area inset (landscape notch / Dynamic Island).
+  static double rightSafeInset(BuildContext context) {
+    final viewRight = MediaQuery.viewPaddingOf(context).right;
+    final webRight = web_insets.readWebSafeInsets().right;
+    return math.max(viewRight, webRight);
   }
 
   /// Bottom clearance for the floating [BuckFooterNav] so it sits cleanly above

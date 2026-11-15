@@ -138,6 +138,25 @@
           });
         }
       };
+
+      window.buckSetThemeColor = function(hex) {
+        try {
+          if (!hex) return;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', hex);
+          document.documentElement.style.setProperty('background-color', hex, 'important');
+          document.documentElement.style.setProperty('background', hex, 'important');
+          if (document.body) {
+            document.body.style.setProperty('background-color', hex, 'important');
+            document.body.style.setProperty('background', hex, 'important');
+          }
+          var host = document.querySelector('flutter-view');
+          if (host) {
+            host.style.setProperty('background-color', hex, 'important');
+            host.style.setProperty('background', hex, 'important');
+          }
+        } catch (_) {}
+      };
     })();
 
     window._buckLoadScript = function(src) {
