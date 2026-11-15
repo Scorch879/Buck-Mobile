@@ -1,4 +1,5 @@
 import 'package:buck/core/widgets/buck_footer_nav.dart';
+import 'package:buck/core/widgets/buck_header.dart';
 import 'package:buck/features/finance/data/finance_models.dart';
 import 'package:buck/features/finance/data/finance_repository.dart';
 import 'package:buck/features/finance/presentation/finance_controller.dart';
@@ -222,5 +223,73 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('profile_side_panel')), findsNothing);
   });
+
+  testWidgets(
+    'scrolling condenses header and lowers footer position without shrinking it',
+    (tester) async {
+      tester.view.physicalSize = const Size(440, 520);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final controller = FinanceController(source(), clock: () => now);
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: MainShell(financeController: controller)),
+      );
+      await tester.pumpAndSettle();
+
+      double footerBottom() => tester
+          .widget<Positioned>(
+            find.ancestor(
+              of: find.byType(BuckFooterNav),
+              matching: find.byType(Positioned),
+            ),
+          )
+          .bottom!;
+
+      final initialBottom = footerBottom();
+      final initialFooterSize = tester.getSize(find.byType(BuckFooterNav));
+
+      expect(
+        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
+        0.0,
+      );
+
+      final scrollable = find.byType(ListView).first;
+
+      // Scroll down -> condenses header and lowers footer position (same size).
+      await tester.drag(scrollable, const Offset(0, -180));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
+        1.0,
+      );
+      expect(footerBottom(), lessThan(initialBottom));
+      expect(tester.getSize(find.byType(BuckFooterNav)), initialFooterSize);
+
+      // Scroll back up -> restores header and footer position.
+      await tester.drag(scrollable, const Offset(0, 180));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
+        0.0,
+      );
+      expect(footerBottom(), initialBottom);
+
+      // Condense again, then switch tab -> restores chrome cleanly.
+      await tester.drag(scrollable, const Offset(0, -180));
+      await tester.pumpAndSettle();
+      expect(footerBottom(), lessThan(initialBottom));
+
+      await tester.tap(find.bySemanticsLabel('Expenses'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
+        0.0,
+      );
+      expect(footerBottom(), initialBottom);
+    },
+  );
 }
 

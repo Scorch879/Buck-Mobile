@@ -33,6 +33,8 @@ Future<void> main() async {
     debugPrint('Supabase initialization error: $e');
   }
 
+  AppLayout.initWebSafeInsetsListener();
+
   runApp(const BuckApp());
 }
 
@@ -56,32 +58,39 @@ class BuckApp extends StatelessWidget {
       ),
       builder: (context, child) {
         final content = child ?? const SizedBox.shrink();
-        final webInsets = readWebSafeInsets();
-        if (webInsets.top == 0 &&
-            webInsets.bottom == 0 &&
-            webInsets.left == 0 &&
-            webInsets.right == 0) {
-          return content;
-        }
-        final mq = MediaQuery.of(context);
-        final mergedViewPadding = EdgeInsets.only(
-          left: math.max(mq.viewPadding.left, webInsets.left),
-          top: math.max(mq.viewPadding.top, webInsets.top),
-          right: math.max(mq.viewPadding.right, webInsets.right),
-          bottom: math.max(mq.viewPadding.bottom, webInsets.bottom),
-        );
-        final mergedPadding = EdgeInsets.only(
-          left: math.max(0.0, mergedViewPadding.left - mq.viewInsets.left),
-          top: math.max(0.0, mergedViewPadding.top - mq.viewInsets.top),
-          right: math.max(0.0, mergedViewPadding.right - mq.viewInsets.right),
-          bottom: math.max(0.0, mergedViewPadding.bottom - mq.viewInsets.bottom),
-        );
-        return MediaQuery(
-          data: mq.copyWith(
-            viewPadding: mergedViewPadding,
-            padding: mergedPadding,
-          ),
-          child: content,
+        return ValueListenableBuilder<WebSafeInsets>(
+          valueListenable: AppLayout.webSafeInsetsNotifier,
+          builder: (context, webInsets, _) {
+            if (webInsets.top == 0 &&
+                webInsets.bottom == 0 &&
+                webInsets.left == 0 &&
+                webInsets.right == 0) {
+              return content;
+            }
+            final mq = MediaQuery.of(context);
+            final mergedViewPadding = EdgeInsets.only(
+              left: math.max(mq.viewPadding.left, webInsets.left),
+              top: math.max(mq.viewPadding.top, webInsets.top),
+              right: math.max(mq.viewPadding.right, webInsets.right),
+              bottom: math.max(mq.viewPadding.bottom, webInsets.bottom),
+            );
+            final mergedPadding = EdgeInsets.only(
+              left: math.max(0.0, mergedViewPadding.left - mq.viewInsets.left),
+              top: math.max(0.0, mergedViewPadding.top - mq.viewInsets.top),
+              right: math.max(0.0, mergedViewPadding.right - mq.viewInsets.right),
+              bottom: math.max(
+                0.0,
+                mergedViewPadding.bottom - mq.viewInsets.bottom,
+              ),
+            );
+            return MediaQuery(
+              data: mq.copyWith(
+                viewPadding: mergedViewPadding,
+                padding: mergedPadding,
+              ),
+              child: content,
+            );
+          },
         );
       },
       home: const AuthGate(),

@@ -1,4 +1,5 @@
-import 'dart:ui' show PointerDeviceKind;
+import 'dart:math' as math;
+import 'dart:ui' show PointerDeviceKind, lerpDouble;
 
 import 'package:flutter/material.dart';
 
@@ -48,12 +49,18 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell>
+    with SingleTickerProviderStateMixin {
   final _authService = AuthService();
   late BuckTab _tab = widget.initialTab;
   PageController? _pageController;
   int? _programmaticPageTarget;
   bool _menuOpen = false;
+  bool _chromeCondensed = false;
+  late final AnimationController _chromeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  );
   late final FinanceController _finance =
       widget.financeController ??
       (SupabaseService.isInitialized
@@ -80,11 +87,49 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    _chromeController.dispose();
     _pageController?.dispose();
     // Only dispose controllers this widget created.
     if (widget.financeController == null) _finance.dispose();
     if (widget.goalsController == null) _goals.dispose();
     super.dispose();
+  }
+
+  void _setChromeCondensed(bool condensed) {
+    if (_chromeCondensed == condensed) return;
+    _chromeCondensed = condensed;
+    if (condensed) {
+      _chromeController.forward();
+    } else {
+      _chromeController.reverse();
+    }
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis == Axis.horizontal &&
+        notification is OverscrollNotification &&
+        _tab == BuckTab.wallet &&
+        notification.overscroll < -18) {
+      _showMenuSheet();
+      return false;
+    }
+
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta ?? 0.0;
+      final pixels = notification.metrics.pixels;
+      final maxExtent = notification.metrics.maxScrollExtent;
+      if (pixels <= 8.0) {
+        _setChromeCondensed(false);
+      } else if (maxExtent > 40.0) {
+        if (delta > 6.0 && pixels > 24.0) {
+          _setChromeCondensed(true);
+        } else if (delta < -6.0) {
+          _setChromeCondensed(false);
+        }
+      }
+    }
+    return false;
   }
 
   String get _welcomeTitle {
@@ -266,7 +311,11 @@ class _MainShellState extends State<MainShell> {
       });
       return;
     }
-    if (_tab == tab) return;
+    if (_tab == tab) {
+      _setChromeCondensed(false);
+      return;
+    }
+    _setChromeCondensed(false);
     setState(() => _tab = tab);
     final pc = _pageController;
     if (pc == null || !pc.hasClients) return;
@@ -319,15 +368,8 @@ class _MainShellState extends State<MainShell> {
     }
 
     final controller = _ensurePageController();
-    return NotificationListener<OverscrollNotification>(
-      onNotification: (notification) {
-        if (notification.metrics.axis == Axis.horizontal &&
-            _tab == BuckTab.wallet &&
-            notification.overscroll < -18) {
-          _showMenuSheet();
-        }
-        return false;
-      },
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
       child: ScrollConfiguration(
         behavior: const MaterialScrollBehavior().copyWith(
           dragDevices: const {
@@ -346,6 +388,7 @@ class _MainShellState extends State<MainShell> {
               }
               return;
             }
+            _setChromeCondensed(false);
             final nextTab = BuckTab.values[index];
             if (_tab != nextTab) {
               setState(() => _tab = nextTab);
@@ -432,91 +475,115 @@ class _MainShellState extends State<MainShell> {
     double footerBottom,
     EdgeInsets contentInset,
   ) {
+    final pageContent = MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      removeBottom: true,
+      child: _body(contentInset),
+    );
+
     return Scaffold(
       backgroundColor: const Color(0xFF2B1309),
       extendBody: true,
-      body: Stack(
-        children: [
-          const Positioned.fill(child: BuckScreenBackground()),
-          Column(
-            children: [
-              BuckHeader(
-                title: _welcomeTitle,
-                onMenuTap: _showMenuSheet,
-                onSwipeOpenMenu: _showMenuSheet,
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final height = constraints.maxHeight;
-                    if (height <= 0) return const SizedBox.shrink();
-                    final fadeEnd =
-                        ((height - footerBottom - BuckFooterNav.height - 2) /
-                                height)
-                            .clamp(0.0, 1.0);
-                    final fadeStart =
-                        ((height - footerBottom - BuckFooterNav.height - 34) /
-                                height)
-                            .clamp(0.0, fadeEnd);
+      body: AnimatedBuilder(
+        animation: _chromeController,
+        child: pageContent,
+        builder: (context, cachedBody) {
+          final t = Curves.easeOutCubic.transform(_chromeController.value);
+          final dynamicFooterBottom = lerpDouble(
+            footerBottom,
+            math.max(2.0, footerBottom - 6.0),
+            t,
+          )!;
+          const dynamicFooterHeight = BuckFooterNav.height;
 
-                    return ShaderMask(
-                      blendMode: BlendMode.dstIn,
-                      shaderCallback: (bounds) => LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: const [
-                          Colors.white,
-                          Colors.white,
-                          Colors.transparent,
-                          Colors.transparent,
-                        ],
-                        stops: [0.0, fadeStart, fadeEnd, 1.0],
-                      ).createShader(bounds),
-                      child: MediaQuery.removePadding(
-                        context: context,
-                        removeTop: true,
-                        removeBottom: true,
-                        child: _body(contentInset),
-                      ),
-                    );
+          return Stack(
+            children: [
+              const Positioned.fill(child: BuckScreenBackground()),
+              Column(
+                children: [
+                  BuckHeader(
+                    title: _welcomeTitle,
+                    onMenuTap: _showMenuSheet,
+                    onSwipeOpenMenu: _showMenuSheet,
+                    collapseProgress: t,
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final height = constraints.maxHeight;
+                        if (height <= 0) return const SizedBox.shrink();
+                        final fadeEnd =
+                            ((height -
+                                        dynamicFooterBottom -
+                                        dynamicFooterHeight -
+                                        2) /
+                                    height)
+                                .clamp(0.0, 1.0);
+                        final fadeStart =
+                            ((height -
+                                        dynamicFooterBottom -
+                                        dynamicFooterHeight -
+                                        34) /
+                                    height)
+                                .clamp(0.0, fadeEnd);
+
+                        return ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (bounds) => LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: const [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                              Colors.transparent,
+                            ],
+                            stops: [0.0, fadeStart, fadeEnd, 1.0],
+                          ).createShader(bounds),
+                          child: cachedBody,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: dynamicFooterBottom,
+                child: BuckFooterNav(
+                  activeTab: _tab,
+                  onTabSelected: _onTabSelected,
+                ),
+              ),
+              Positioned.fill(
+                child: AiFloatingChatBubble(
+                  bottomRestOffset:
+                      dynamicFooterBottom + dynamicFooterHeight + 12,
+                ),
+              ),
+              // Left-edge swipe-right zone so users can pull the Profile Side Panel
+              // open from any tab without conflicting with full-width tab swipes or
+              // header menu taps.
+              Positioned(
+                left: 0,
+                top: AppLayout.topSafeInset(context) + BuckHeader.height,
+                bottom: 0,
+                width: 22,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  excludeFromSemantics: true,
+                  onHorizontalDragEnd: (details) {
+                    if ((details.primaryVelocity ?? 0) > 160) {
+                      _showMenuSheet();
+                    }
                   },
                 ),
               ),
             ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: footerBottom,
-            child: BuckFooterNav(
-              activeTab: _tab,
-              onTabSelected: _onTabSelected,
-            ),
-          ),
-          Positioned.fill(
-            child: AiFloatingChatBubble(
-              bottomRestOffset: footerBottom + BuckFooterNav.height + 12,
-            ),
-          ),
-          // Left-edge swipe-right zone so users can pull the Profile Side Panel
-          // open from any tab without conflicting with full-width tab swipes or
-          // header menu taps.
-          Positioned(
-            left: 0,
-            top: AppLayout.topSafeInset(context) + BuckHeader.height,
-            bottom: 0,
-            width: 22,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              excludeFromSemantics: true,
-              onHorizontalDragEnd: (details) {
-                if ((details.primaryVelocity ?? 0) > 160) {
-                  _showMenuSheet();
-                }
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

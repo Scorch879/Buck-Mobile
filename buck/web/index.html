@@ -26,15 +26,13 @@
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
-      height: 100% !important;
-      height: 100dvh !important;
-      min-height: 100dvh !important;
+      min-height: 100% !important;
+      height: auto !important;
       background-color: #2B1309 !important;
       background: #2B1309 !important;
-      overflow: hidden !important;
-      position: fixed !important;
-      inset: 0 !important;
-      overscroll-behavior: none !important;
+      overflow-x: clip !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
       -webkit-tap-highlight-color: transparent;
       scrollbar-width: none;
       -ms-overflow-style: none;
@@ -53,21 +51,19 @@
       position: fixed !important;
       inset: 0 !important;
       width: 100% !important;
-      height: 100% !important;
-      height: 100dvh !important;
-      min-height: 100dvh !important;
       margin: 0 !important;
       padding: 0 !important;
       display: block !important;
-      overflow: hidden !important;
       background-color: #2B1309 !important;
       background: #2B1309 !important;
     }
 
-    /* Hidden probe measuring CSS safe-area insets inside the active viewport. */
+    /* Hidden probes measuring CSS safe-area insets and dynamic vs large viewport height. */
     #buck-viewport-probe {
       position: fixed;
       inset: 0;
+      width: 100%;
+      height: 100dvh;
       padding-top: env(safe-area-inset-top, 0px);
       padding-right: env(safe-area-inset-right, 0px);
       padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -76,10 +72,22 @@
       visibility: hidden;
       z-index: -1;
     }
+
+    #buck-lvh-probe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100lvh;
+      pointer-events: none;
+      visibility: hidden;
+      z-index: -1;
+    }
   </style>
 </head>
 <body>
   <div id="buck-viewport-probe" aria-hidden="true"></div>
+  <div id="buck-lvh-probe" aria-hidden="true"></div>
   <script>
     // Re-apply viewport-fit=cover because Flutter Web rewrites the viewport
     // meta tag on startup, and expose safe-area insets without overriding
@@ -121,12 +129,25 @@
           var envRight = parseFloat(style.paddingRight) || 0;
           var envBottom = parseFloat(style.paddingBottom) || 0;
           var envLeft = parseFloat(style.paddingLeft) || 0;
+
+          var barBottom = 0;
+          var lvhProbe = document.getElementById('buck-lvh-probe');
+          if (lvhProbe) {
+            var lvhH = lvhProbe.getBoundingClientRect().height || 0;
+            var dvhH = probe.getBoundingClientRect().height || window.innerHeight || 0;
+            var vvH = (window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : dvhH;
+            var keyboardOpen = (dvhH - vvH) > 130;
+            if (!keyboardOpen && lvhH > dvhH + 2) {
+              barBottom = Math.min(96, Math.round(lvhH - dvhH));
+            }
+          }
+
           return JSON.stringify({
             top: envTop,
             bottom: envBottom,
             left: envLeft,
             right: envRight,
-            browserBarBottom: 0
+            browserBarBottom: barBottom
           });
         } catch (e) {
           return JSON.stringify({
@@ -138,6 +159,33 @@
           });
         }
       };
+
+      var _buckInsetSubscribers = [];
+      function _buckNotifyInsets() {
+        for (var i = 0; i < _buckInsetSubscribers.length; i++) {
+          try { _buckInsetSubscribers[i](); } catch (_) {}
+        }
+      }
+
+      window.buckSubscribeSafeInsets = function(cb) {
+        if (typeof cb === 'function') {
+          _buckInsetSubscribers.push(cb);
+        }
+      };
+
+      window.addEventListener('resize', _buckNotifyInsets, { passive: true });
+      window.addEventListener('orientationchange', _buckNotifyInsets, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', _buckNotifyInsets, { passive: true });
+        window.visualViewport.addEventListener('scroll', _buckNotifyInsets, { passive: true });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        var _ro = new ResizeObserver(_buckNotifyInsets);
+        var p1 = document.getElementById('buck-viewport-probe');
+        var p2 = document.getElementById('buck-lvh-probe');
+        if (p1) _ro.observe(p1);
+        if (p2) _ro.observe(p2);
+      }
 
       window.buckSetThemeColor = function(hex) {
         try {

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Web viewport safe-area and browser-toolbar insets.
 ///
 /// On non-web platforms (iOS/Android/desktop), native [MediaQuery] already
@@ -20,6 +22,11 @@ class WebSafeInsets {
   static const WebSafeInsets zero = WebSafeInsets();
 }
 
+final ValueNotifier<WebSafeInsets> webSafeInsetsNotifier =
+    ValueNotifier<WebSafeInsets>(WebSafeInsets.zero);
+
 WebSafeInsets readWebSafeInsets() => WebSafeInsets.zero;
+
+void initWebSafeInsetsListener() {}
 
 void setWebThemeColor(String hexColor) {}

@@ -7,12 +7,23 @@ import 'web_safe_insets_stub.dart'
 
 export 'web_safe_insets_stub.dart'
     if (dart.library.js_interop) 'web_safe_insets_web.dart'
-    show WebSafeInsets, readWebSafeInsets, setWebThemeColor;
+    show
+        WebSafeInsets,
+        initWebSafeInsetsListener,
+        readWebSafeInsets,
+        setWebThemeColor,
+        webSafeInsetsNotifier;
 
 class AppLayout {
   static const String shellThemeHex = '#2B1309';
   static const String darkSurfaceThemeHex = '#100B09';
   static int _darkBarSurfaceDepth = 0;
+
+  static ValueNotifier<web_insets.WebSafeInsets> get webSafeInsetsNotifier =>
+      web_insets.webSafeInsetsNotifier;
+
+  static void initWebSafeInsetsListener() =>
+      web_insets.initWebSafeInsetsListener();
 
   /// Switches the web browser chrome (`theme-color` & viewport background) to
   /// `#100B09` while dark full-screen overlays/settings are mounted.
@@ -77,15 +88,19 @@ class AppLayout {
   }
 
   /// Bottom clearance for the floating [BuckFooterNav] so it sits cleanly above
-  /// both hardware home indicators and mobile Safari's floating bottom bar.
+  /// both hardware home indicators and mobile Safari's floating bottom bar,
+  /// adapting dynamically as browser toolbars expand or collapse.
   static double footerBottomOffset(BuildContext context) {
     final webInsets = web_insets.readWebSafeInsets();
+    final viewPaddingBottom = math.max(
+      MediaQuery.viewPaddingOf(context).bottom,
+      webInsets.bottom,
+    );
     if (webInsets.browserBarBottom > 0) {
-      return webInsets.browserBarBottom + 6.0;
+      return math.max(10.0, webInsets.browserBarBottom * 0.32).clamp(10.0, 20.0);
     }
-    final viewPaddingBottom = MediaQuery.viewPaddingOf(context).bottom;
     if (viewPaddingBottom > 0) {
-      return (viewPaddingBottom * 0.4).clamp(6.0, 14.0);
+      return (viewPaddingBottom * 0.35).clamp(6.0, 16.0);
     }
     return 6.0;
   }

@@ -1,8 +1,13 @@
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:flutter/foundation.dart';
+
 @JS('buckGetSafeInsets')
 external JSString? _jsBuckGetSafeInsets();
+
+@JS('buckSubscribeSafeInsets')
+external void _jsBuckSubscribeSafeInsets(JSFunction callback);
 
 @JS('buckSetThemeColor')
 external void _jsBuckSetThemeColor(JSString hexColor);
@@ -25,6 +30,40 @@ class WebSafeInsets {
   });
 
   static const WebSafeInsets zero = WebSafeInsets();
+
+  @override
+  bool operator ==(Object other) =>
+      other is WebSafeInsets &&
+      other.top == top &&
+      other.bottom == bottom &&
+      other.left == left &&
+      other.right == right &&
+      other.browserBarBottom == browserBarBottom;
+
+  @override
+  int get hashCode =>
+      Object.hash(top, bottom, left, right, browserBarBottom);
+}
+
+final ValueNotifier<WebSafeInsets> webSafeInsetsNotifier =
+    ValueNotifier<WebSafeInsets>(readWebSafeInsets());
+
+bool _listenerInitialized = false;
+
+void initWebSafeInsetsListener() {
+  if (_listenerInitialized) return;
+  _listenerInitialized = true;
+  webSafeInsetsNotifier.value = readWebSafeInsets();
+  try {
+    _jsBuckSubscribeSafeInsets(
+      (() {
+        final next = readWebSafeInsets();
+        if (next != webSafeInsetsNotifier.value) {
+          webSafeInsetsNotifier.value = next;
+        }
+      }).toJS,
+    );
+  } catch (_) {}
 }
 
 WebSafeInsets readWebSafeInsets() {
