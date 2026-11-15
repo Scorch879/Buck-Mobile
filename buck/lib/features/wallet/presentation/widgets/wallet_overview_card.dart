@@ -192,7 +192,8 @@ class WalletOverviewCard extends StatelessWidget {
     final fBills = flex(sumBills);
     final fFood = flex(sumFood);
     final fTransport = flex(sumTransport);
-    final fBalance = flex(balance + sumOthers);
+    final fOthers = flex(sumOthers);
+    final fBalance = flex(balance);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
@@ -230,6 +231,14 @@ class WalletOverviewCard extends StatelessWidget {
                 child: Container(
                   color: const Color(0xFF2A7D8C),
                   margin: const EdgeInsets.only(right: 2),
+                ),
+              ),
+            if (fOthers > 0)
+              Expanded(
+                flex: fOthers,
+                child: Container(
+                  color: StatsCalculator.colorOthers,
+                  margin: fBalance > 0 ? const EdgeInsets.only(right: 2) : EdgeInsets.zero,
                 ),
               ),
             if (fBalance > 0)

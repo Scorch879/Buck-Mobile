@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#100B09">
+  <meta name="theme-color" content="#2B1309">
   <meta name="description" content="Buck - Finance & Expenses Tracker">
 
   <!-- iOS meta tags & icons -->
@@ -21,46 +21,53 @@
   <title>buck</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    html {
-      background-color: #100B09;
-      background-image: linear-gradient(180deg, #100B09 0%, #180D09 18%, #351509 68%, #4A1D0B 100%);
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100vh !important;
-      height: 100lvh !important;
-      min-height: 100vh !important;
-      min-height: 100lvh !important;
-      min-height: -webkit-fill-available !important;
-      overflow: hidden;
-    }
-
-    body,
-    flutter-view,
-    flt-glass-pane {
-      background-color: transparent;
-      margin: 0;
-      padding: 0;
+    html,
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
       width: 100% !important;
-      height: 100vh !important;
-      height: 100lvh !important;
-      min-height: 100vh !important;
-      min-height: 100lvh !important;
-      min-height: -webkit-fill-available !important;
-      bottom: auto !important;
-      overflow: hidden;
+      height: 100% !important;
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+      background-color: #2B1309 !important;
+      background: #2B1309 !important;
+      overflow: hidden !important;
+      position: fixed !important;
+      inset: 0 !important;
+      overscroll-behavior: none !important;
+      -webkit-tap-highlight-color: transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
 
-    /* Hidden probe measuring small-viewport height (100svh) and CSS safe-area
-       insets so Flutter can pad controls above Safari's floating bars while
-       the Flutter canvas extends edge-to-edge across 100lvh. */
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    flutter-view,
+    flt-glass-pane,
+    flt-scene-host {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+      overflow: hidden !important;
+      background-color: #2B1309 !important;
+      background: #2B1309 !important;
+    }
+
+    /* Hidden probe measuring CSS safe-area insets inside the active viewport. */
     #buck-viewport-probe {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 0;
-      height: 100vh;
-      height: 100svh;
+      inset: 0;
       padding-top: env(safe-area-inset-top, 0px);
       padding-right: env(safe-area-inset-right, 0px);
       padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -74,9 +81,9 @@
 <body>
   <div id="buck-viewport-probe" aria-hidden="true"></div>
   <script>
-    // Flutter Web replaces <meta name="viewport"> during startup and strips
-    // viewport-fit=cover. Re-apply it immediately so notched devices keep
-    // edge-to-edge CSS env(safe-area-inset-*) and 100lvh coverage.
+    // Re-apply viewport-fit=cover because Flutter Web rewrites the viewport
+    // meta tag on startup, and expose safe-area insets without overriding
+    // documentElement.clientWidth / clientHeight so Flutter matches 100dvh.
     (function() {
       function _buckEnsureViewportCover() {
         var meta = document.querySelector('meta[name="viewport"]');
@@ -114,15 +121,12 @@
           var envRight = parseFloat(style.paddingRight) || 0;
           var envBottom = parseFloat(style.paddingBottom) || 0;
           var envLeft = parseFloat(style.paddingLeft) || 0;
-          var largeH = document.documentElement.clientHeight || window.innerHeight || 0;
-          var smallH = probe.clientHeight || largeH;
-          var browserBarBottom = Math.max(0, largeH - smallH);
           return JSON.stringify({
             top: envTop,
-            bottom: Math.max(envBottom, browserBarBottom),
+            bottom: envBottom,
             left: envLeft,
             right: envRight,
-            browserBarBottom: browserBarBottom
+            browserBarBottom: 0
           });
         } catch (e) {
           return JSON.stringify({
@@ -177,6 +181,67 @@
         return '';
       }
     };
+  </script>
+  <script>
+    // Unregister stale Flutter/PWA service workers and clear cached Flutter
+    // assets so phones and browsers immediately receive fresh JS/WASM builds.
+    (function() {
+      var BUCK_CACHE_PURGE_KEY = 'buck_sw_purged_v4';
+      (async function() {
+        try {
+          var hadController = Boolean(
+            'serviceWorker' in navigator &&
+            navigator.serviceWorker &&
+            navigator.serviceWorker.controller
+          );
+          if ('serviceWorker' in navigator &&
+              navigator.serviceWorker &&
+              typeof navigator.serviceWorker.getRegistrations === 'function') {
+            var registrations = await navigator.serviceWorker.getRegistrations();
+            if (registrations && registrations.length) {
+              var unregTasks = [];
+              for (var i = 0; i < registrations.length; i++) {
+                try {
+                  unregTasks.push(
+                    Promise.resolve(registrations[i].unregister()).catch(function() {})
+                  );
+                } catch (_) {}
+              }
+              await Promise.all(unregTasks);
+            }
+          }
+          if ('caches' in window &&
+              window.caches &&
+              typeof window.caches.keys === 'function' &&
+              typeof window.caches.delete === 'function') {
+            var keys = await window.caches.keys();
+            if (keys && keys.length) {
+              var cacheTasks = [];
+              for (var j = 0; j < keys.length; j++) {
+                var key = keys[j];
+                if (typeof key === 'string' &&
+                    (key.indexOf('flutter-') === 0 || key.indexOf('workbox-') === 0)) {
+                  try {
+                    cacheTasks.push(
+                      Promise.resolve(window.caches.delete(key)).catch(function() {})
+                    );
+                  } catch (_) {}
+                }
+              }
+              await Promise.all(cacheTasks);
+            }
+          }
+          try {
+            if (hadController &&
+                window.sessionStorage &&
+                !window.sessionStorage.getItem(BUCK_CACHE_PURGE_KEY)) {
+              window.sessionStorage.setItem(BUCK_CACHE_PURGE_KEY, '1');
+              window.location.reload();
+            }
+          } catch (_) {}
+        } catch (_) {}
+      })();
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

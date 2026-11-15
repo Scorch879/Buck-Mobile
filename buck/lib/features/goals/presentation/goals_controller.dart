@@ -15,7 +15,9 @@ class GoalsController extends ChangeNotifier {
   })  : _repository = repository,
         _goals = initialGoals != null
             ? List<GoalItem>.from(initialGoals)
-            : List<GoalItem>.from(_defaultInitialGoals);
+            : (repository != null
+                ? <GoalItem>[]
+                : List<GoalItem>.from(_defaultInitialGoals));
 
   static const List<GoalItem> _defaultInitialGoals = [
     GoalItem(
@@ -53,6 +55,7 @@ class GoalsController extends ChangeNotifier {
     ),
   ];
 
+  bool get hasRepository => _repository != null;
   List<GoalItem> get goals => List.unmodifiable(_goals);
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -78,10 +81,7 @@ class GoalsController extends ChangeNotifier {
       notifyListeners();
 
       final loaded = await _repository.loadGoals();
-      // If user has saved goals in database, use them; if empty, keep default demo goals
-      if (loaded.isNotEmpty) {
-        _goals = loaded;
-      }
+      _goals = loaded;
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -99,24 +99,22 @@ class GoalsController extends ChangeNotifier {
     required IconData icon,
     required Color themeColor,
     required List<Color> gradientColors,
+    String? walletId,
   }) async {
     if (_repository != null) {
-      try {
-        final saved = await _repository.addGoal(
-          title: title,
-          targetAmount: targetAmount,
-          initialAmount: initialAmount,
-          targetDate: targetDate,
-          icon: icon,
-          themeColor: themeColor,
-          gradientColors: gradientColors,
-        );
-        _goals = [saved, ..._goals];
-        notifyListeners();
-        return saved;
-      } catch (_) {
-        // Fallback to in-memory on error
-      }
+      final saved = await _repository.addGoal(
+        title: title,
+        targetAmount: targetAmount,
+        initialAmount: initialAmount,
+        targetDate: targetDate,
+        icon: icon,
+        themeColor: themeColor,
+        gradientColors: gradientColors,
+        walletId: walletId,
+      );
+      _goals = [saved, ..._goals];
+      notifyListeners();
+      return saved;
     }
 
     final status = initialAmount >= targetAmount
@@ -149,15 +147,12 @@ class GoalsController extends ChangeNotifier {
     if (amount <= 0) return false;
 
     if (_repository != null) {
-      try {
-        await _repository.allocateFunds(
-          goalId: goalId,
-          amount: amount,
-          walletId: walletId,
-        );
-      } catch (_) {
-        // Continue to update local state so UI responds immediately
-      }
+      final ok = await _repository.allocateFunds(
+        goalId: goalId,
+        amount: amount,
+        walletId: walletId,
+      );
+      if (!ok) return false;
     }
 
     final index = _goals.indexWhere((g) => g.id == goalId);

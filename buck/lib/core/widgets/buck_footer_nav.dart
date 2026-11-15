@@ -83,17 +83,22 @@ class BuckFooterNav extends StatelessWidget {
     final activeMeta = _tabMetas[activeTab] ?? _tabMetas[BuckTab.home]!;
     final raisedLeft = activeMeta.centerX - (_circleDiameter / 2);
 
-    return SizedBox(
-      height: height,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.bottomCenter,
-        child: SizedBox(
-          width: _frameWidth,
-          height: height,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                width: _frameWidth,
+                height: height,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
               // 1. Navigation Bar Pill Container
               Positioned(
                 left: _barLeft,
@@ -105,6 +110,13 @@ class BuckFooterNav extends StatelessWidget {
                     color: AppColors.navBarBg,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.navBarBorder, width: 1),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x80120703),
+                        blurRadius: 18,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -167,6 +179,9 @@ class BuckFooterNav extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+        ),
+            ),
           ),
         ),
       ),

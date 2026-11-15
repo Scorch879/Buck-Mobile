@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -79,173 +81,335 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final isShort = size.height < 780;
-    final isNarrow = size.width < 380;
     final topSafe = AppLayout.topSafeInset(context);
     final bottomSafe = AppLayout.bottomSafeInset(context);
-    final horizontalPad = isNarrow ? 14.0 : 20.0;
-    final verticalPad = isShort ? 12.0 : 24.0;
 
     return Scaffold(
-      backgroundColor: AppColors.navBarBg,
+      backgroundColor: const Color(0xFF2B1309),
       extendBody: true,
       body: BuckBackground(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPad,
-              topSafe + verticalPad,
-              horizontalPad,
-              bottomSafe + verticalPad,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isNarrow ? 18 : 24,
-                  vertical: isShort ? 20 : 28,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 380;
+            final isShort = constraints.maxHeight < 780;
+            final isCompact = constraints.maxHeight < 700;
+            final horizontalPad = isNarrow ? 14.0 : 16.0;
+            final topPad = topSafe + (isCompact ? 12.0 : 18.0);
+            final bottomPad = bottomSafe + (isCompact ? 14.0 : 20.0);
+            final usableHeight = math.max(
+              0.0,
+              constraints.maxHeight - topPad - bottomPad,
+            );
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPad,
+                topPad,
+                horizontalPad,
+                bottomPad,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: usableHeight,
+                    maxWidth: 480,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeroSection(
+                        isShort: isShort,
+                        isCompact: isCompact,
+                        isNarrow: isNarrow,
+                      ),
+                      SizedBox(height: isCompact ? 12 : (isShort ? 16 : 24)),
+                      _buildFormSurface(
+                        isShort: isShort,
+                        isCompact: isCompact,
+                        isNarrow: isNarrow,
+                      ),
+                    ],
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.cardSurface.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.cardBorder, width: 1.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Logo Avatar (matching Figma 2173:4312)
-                    BuckLogoBadge(size: isShort ? 72 : 84),
-                    SizedBox(height: isShort ? 14 : 20),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-                    // Eyebrow & Title
-                    Text('ACCOUNT RECOVERY', style: AppTextStyles.eyebrow),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Reset Password',
-                      style: isShort
-                          ? AppTextStyles.h1.copyWith(fontSize: 24)
-                          : AppTextStyles.h1,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Enter the email connected to your Buck account',
-                      style: AppTextStyles.bodySubdued,
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: isShort ? 18 : 28),
+  Widget _buildHeroSection({
+    required bool isShort,
+    required bool isCompact,
+    required bool isNarrow,
+  }) {
+    final headlineSize = isCompact
+        ? (isNarrow ? 21.0 : 23.0)
+        : (isNarrow ? 24.0 : (isShort ? 26.0 : 30.0));
 
-                  // Error Message Banner
-                  if (_errorMessage != null) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4A100B),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFEA4335).withValues(alpha: 0.6)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: AppTextStyles.body.copyWith(
-                                color: const Color(0xFFFFD1D1),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            BuckLogoBadge(size: isCompact ? 36 : (isShort ? 40 : 46)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Buck',
+                    style: AppTextStyles.h2.copyWith(
+                      fontSize: isCompact ? 18 : 20,
+                      height: 1.1,
                     ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  if (_emailSent) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.badgeCyanBg.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.badgeCyanText.withValues(alpha: 0.5)),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.check_circle_outline, color: AppColors.badgeCyanText, size: 40),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Reset Link Sent',
-                            style: AppTextStyles.h2.copyWith(fontSize: 18, color: AppColors.badgeCyanText),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Password reset link sent to ${_emailController.text.trim()}! Please check your inbox and spam folder.',
-                            style: AppTextStyles.body.copyWith(fontSize: 13),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ] else ...[
-                    // Email input
-                    BuckTextField(
-                      label: 'Email address',
-                      placeholder: 'you@example.com',
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    SizedBox(height: isShort ? 18 : 28),
-
-                    // Send Reset Link CTA (Orange button matching Figma)
-                    BuckButton(
-                      text: 'Send Reset Link',
-                      variant: BuckButtonVariant.orange,
-                      suffixIcon: Icons.arrow_forward_rounded,
-                      isLoading: _isLoading,
-                      onPressed: _handleReset,
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // Footer: Back to Sign In
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Already have an account? ', style: AppTextStyles.bodySubdued),
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Text(
-                            'Back to Sign In',
-                            style: AppTextStyles.label.copyWith(
-                              color: AppColors.textPrimary,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
+                  ),
+                  Text(
+                    'Budget Tracker',
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
+              ),
+            ),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.lightPeach,
+                backgroundColor: AppColors.primaryOrange.withValues(alpha: 0.14),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: AppColors.amberAccent.withValues(alpha: 0.45),
+                  ),
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back_rounded, size: 15),
+              label: Text(
+                'Back',
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.lightPeach,
                 ),
               ),
             ),
+          ],
+        ),
+        SizedBox(height: isCompact ? 10 : (isShort ? 14 : 20)),
+        Text(
+          'ACCOUNT RECOVERY',
+          style: AppTextStyles.eyebrow.copyWith(
+            fontSize: isCompact ? 10 : 11,
+            color: AppColors.amberAccent,
           ),
         ),
+        SizedBox(height: isCompact ? 4 : 6),
+        Text.rich(
+          TextSpan(
+            style: AppTextStyles.h1.copyWith(
+              fontSize: headlineSize,
+              height: 1.12,
+              fontWeight: FontWeight.w800,
+            ),
+            children: [
+              const TextSpan(text: 'Get back into\n'),
+              TextSpan(
+                text: 'your Buck account.',
+                style: TextStyle(color: AppColors.amberAccent),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: isCompact ? 4 : 6),
+        Text(
+          'Enter the email connected to your account and we will send a secure reset link.',
+          style: AppTextStyles.bodySubdued.copyWith(
+            fontSize: isCompact ? 12 : (isShort ? 13 : 14),
+            height: isCompact ? 1.28 : 1.38,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFormSurface({
+    required bool isShort,
+    required bool isCompact,
+    required bool isNarrow,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isNarrow ? 16 : (isCompact ? 18 : 22),
+        vertical: isCompact ? 16 : (isShort ? 22 : 26),
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF281209).withValues(alpha: 0.90),
+            AppColors.cardSurface.withValues(alpha: 0.94),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.cardBorder.withValues(alpha: 0.45),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryOrange.withValues(alpha: 0.10),
+            blurRadius: 28,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'RESET PASSWORD',
+            style: AppTextStyles.eyebrow,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Reset Password',
+            style: isShort
+                ? AppTextStyles.h1.copyWith(fontSize: 23)
+                : AppTextStyles.h2.copyWith(fontSize: 26),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'We will email instructions to set a new password.',
+            style: AppTextStyles.bodySubdued.copyWith(fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: isShort ? 16 : 22),
+
+          // Error Message Banner
+          if (_errorMessage != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4A100B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFEA4335).withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: AppTextStyles.body.copyWith(
+                        color: const Color(0xFFFFD1D1),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (_emailSent) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.badgeCyanBg.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.badgeCyanText.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.badgeCyanText,
+                    size: 40,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Reset Link Sent',
+                    style: AppTextStyles.h2.copyWith(
+                      fontSize: 18,
+                      color: AppColors.badgeCyanText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Password reset link sent to ${_emailController.text.trim()}! Please check your inbox and spam folder.',
+                    style: AppTextStyles.body.copyWith(fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ] else ...[
+            // Email input
+            BuckTextField(
+              label: 'Email address',
+              placeholder: 'you@example.com',
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+            ),
+            SizedBox(height: isShort ? 18 : 24),
+
+            // Send Reset Link CTA (Orange button matching Figma)
+            BuckButton(
+              text: 'Send Reset Link',
+              variant: BuckButtonVariant.orange,
+              suffixIcon: Icons.arrow_forward_rounded,
+              isLoading: _isLoading,
+              onPressed: _handleReset,
+            ),
+            const SizedBox(height: 18),
+          ],
+
+          // Footer: Back to Sign In
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Already have an account? ', style: AppTextStyles.bodySubdued),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Back to Sign In',
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.textPrimary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

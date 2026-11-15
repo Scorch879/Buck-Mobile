@@ -1,146 +1,86 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-import '../theme/app_colors.dart';
-
-/// In-app screen backdrop from Figma "Background / Clipped to Screen"
-/// (Home Dashboard 2248:240, Expenses 2245:505).
+/// In-app screen backdrop rendered from the pre-blurred Figma wave asset.
 ///
-/// Shapes are laid out on the 440x956 Figma frame and scaled to cover the
-/// device, so proportions match the design on every screen size.
+/// Uses smooth multi-stop #2B1309 feathers at the top and bottom edges so
+/// in-app screens transition seamlessly into system status bars and Safari's
+/// floating chrome with zero unblurred SVG filter edges.
 class BuckScreenBackground extends StatelessWidget {
   const BuckScreenBackground({super.key});
 
-  static const double _frameWidth = 440;
-  static const double _frameHeight = 956;
+  static const List<Color> _featherColors = [
+    Color(0xFF2B1309),
+    Color(0xC42B1309),
+    Color(0x732B1309),
+    Color(0x262B1309),
+    Color(0x002B1309),
+  ];
+
+  static const List<double> _featherStops = [0.0, 0.22, 0.48, 0.75, 1.0];
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.screenGradientTop, AppColors.screenGradientBottom],
-        ),
-      ),
+    return ColoredBox(
+      color: const Color(0xFF2B1309),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ClipRect(
-            child: FittedBox(
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/background_waves.png',
               fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-              child: SizedBox(
-                width: _frameWidth,
-                height: _frameHeight,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Background / Bottom Glow — flipped vertically.
-                    Positioned(
-                      left: -11,
-                      top: -20,
-                      width: 641,
-                      height: 799,
-                      child: Transform(
-                        alignment: Alignment.center,
-                        transform: Matrix4.diagonal3Values(1, -1, 1),
-                        child: const _InsetSvg(
-                          asset: 'assets/backgrounds/bottom_glow.svg',
-                          left: -50,
-                          top: -40,
-                        ),
-                      ),
+              alignment: const Alignment(0, -0.35),
+              errorBuilder: (context, error, stackTrace) {
+                return const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(-0.8, -0.6),
+                      radius: 1.2,
+                      colors: [
+                        Color(0xFF8C3E14),
+                        Color(0xFF351208),
+                        Color(0xFF2B1309),
+                      ],
+                      stops: [0.0, 0.45, 1.0],
                     ),
-                    // Background / Top Glow.
-                    const Positioned(
-                      left: -23,
-                      top: -180,
-                      width: 571,
-                      height: 560,
-                      child: _InsetSvg(
-                        asset: 'assets/backgrounds/top_glow.svg',
-                        left: -50,
-                        top: -30,
-                      ),
-                    ),
-                    // Background / Accent Shape — flipped vertically, then rotated 90°.
-                    Positioned(
-                      left: 9,
-                      top: 705,
-                      width: 601,
-                      height: 590,
-                      child: OverflowBox(
-                        minWidth: 590,
-                        maxWidth: 590,
-                        minHeight: 601,
-                        maxHeight: 601,
-                        child: Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.rotationZ(math.pi / 2)
-                            ..multiply(Matrix4.diagonal3Values(1, -1, 1)),
-                          child: const SizedBox(
-                            width: 590,
-                            height: 601,
-                            child: _InsetSvg(
-                              asset: 'assets/backgrounds/accent_shape.svg',
-                              left: -50,
-                              top: -17,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Feather top edge into status bar / browser chrome (#100B09)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 64,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.navBarBg,
-                      Colors.transparent,
-                    ],
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
+          // Subtle dark espresso veil so glass cards maintain crisp contrast
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: ColoredBox(color: Color(0x33140703)),
+            ),
+          ),
+          // Smooth multi-stop top and bottom feathers matching Safari's #2B1309 chrome
+          _edgeFeather(isTop: true, height: 180),
+          _edgeFeather(isTop: false, height: 240),
         ],
       ),
     );
   }
-}
 
-/// Places an SVG at its native size, offset by the Figma export bleed.
-class _InsetSvg extends StatelessWidget {
-  final String asset;
-  final double left;
-  final double top;
-
-  const _InsetSvg({required this.asset, required this.left, required this.top});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(left: left, top: top, child: SvgPicture.asset(asset)),
-      ],
+  Widget _edgeFeather({required bool isTop, required double height}) {
+    return Positioned(
+      top: isTop ? 0 : null,
+      bottom: isTop ? null : 0,
+      left: 0,
+      right: 0,
+      height: height,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: isTop ? Alignment.topCenter : Alignment.bottomCenter,
+              end: isTop ? Alignment.bottomCenter : Alignment.topCenter,
+              colors: _featherColors,
+              stops: _featherStops,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

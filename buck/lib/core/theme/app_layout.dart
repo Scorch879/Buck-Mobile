@@ -10,14 +10,16 @@ export 'web_safe_insets_stub.dart'
     show WebSafeInsets, readWebSafeInsets;
 
 class AppLayout {
-  /// Width of the content column in the 440px Figma mobile frames.
-  static const double contentMaxWidth = 383;
+  /// Maximum width of the main content column across phones and tablets.
+  static const double contentMaxWidth = 600;
 
-  /// Side margin for page content: 28px on the 440px Figma frame,
-  /// shrinking to 16px on narrow phones so cards keep their width.
+  /// Responsive horizontal side margin so cards utilize full usable phone width
+  /// on compact, standard, and large devices alike.
   static double pageMargin(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    return ((width - contentMaxWidth) / 2).clamp(16.0, 28.0);
+    if (width < 380) return 14.0;
+    if (width < 600) return 16.0;
+    return 24.0;
   }
 
   /// Effective top safe-area inset across native mobile, desktop, and iOS

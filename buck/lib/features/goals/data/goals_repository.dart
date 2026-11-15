@@ -16,6 +16,7 @@ abstract class GoalsDataSource {
     required IconData icon,
     required Color themeColor,
     required List<Color> gradientColors,
+    String? walletId,
   });
 
   Future<bool> allocateFunds({
@@ -67,6 +68,7 @@ class GoalsRepository implements GoalsDataSource {
     required IconData icon,
     required Color themeColor,
     required List<Color> gradientColors,
+    String? walletId,
   }) async {
     final userId = _userId;
 
@@ -107,6 +109,16 @@ class GoalsRepository implements GoalsDataSource {
         .select()
         .single();
 
+    if (initialAmount > 0 && walletId != null && walletId.isNotEmpty) {
+      await _debitWalletAndLogSavings(
+        userId: userId,
+        walletId: walletId,
+        goalId: row['id'] as String,
+        amount: initialAmount,
+        description: 'Initial savings for ${title.trim()}',
+      );
+    }
+
     return GoalItem.fromRow(row);
   }
 
@@ -146,49 +158,63 @@ class GoalsRepository implements GoalsDataSource {
 
     // 3. If walletId provided, deduct from wallet and log as savings expense
     if (walletId != null && walletId.isNotEmpty) {
-      try {
-        final walletRow = await _client
-            .from('wallets')
-            .select('budget, name')
-            .eq('id', walletId)
-            .eq('user_id', userId)
-            .maybeSingle();
-
-        if (walletRow != null) {
-          final curBudget = _toDouble(walletRow['budget']);
-          final newBudget = (curBudget - amount).clamp(0.0, double.infinity);
-
-          await _client
-              .from('wallets')
-              .update({
-                'budget': newBudget,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', walletId)
-              .eq('user_id', userId);
-
-          final today = DateTime.now();
-          final todayStr =
-              '${today.year.toString().padLeft(4, '0')}-'
-              '${today.month.toString().padLeft(2, '0')}-'
-              '${today.day.toString().padLeft(2, '0')}';
-
-          await _client.from('expenses').insert({
-            'user_id': userId,
-            'wallet_id': walletId,
-            'goal_id': goalId,
-            'category_name': 'Savings',
-            'amount': amount,
-            'description': 'Allocated to $goalName',
-            'spent_on': todayStr,
-          });
-        }
-      } catch (_) {
-        // Goal allocation in goals table succeeded; wallet debit is best-effort
-      }
+      await _debitWalletAndLogSavings(
+        userId: userId,
+        walletId: walletId,
+        goalId: goalId,
+        amount: amount,
+        description: 'Allocated to $goalName',
+      );
     }
 
     return true;
+  }
+
+  /// Deducts [amount] from [walletId] and records a `'Savings'` expense row so
+  /// Wallet, Home, Expenses, and Stats stay synchronized with goal transfers.
+  Future<void> _debitWalletAndLogSavings({
+    required String userId,
+    required String walletId,
+    required String goalId,
+    required double amount,
+    required String description,
+  }) async {
+    final walletRow = await _client
+        .from('wallets')
+        .select('budget')
+        .eq('id', walletId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (walletRow == null) return;
+
+    final curBudget = _toDouble(walletRow['budget']);
+    final newBudget = (curBudget - amount).clamp(0.0, double.infinity);
+
+    await _client
+        .from('wallets')
+        .update({
+          'budget': newBudget,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', walletId)
+        .eq('user_id', userId);
+
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year.toString().padLeft(4, '0')}-'
+        '${today.month.toString().padLeft(2, '0')}-'
+        '${today.day.toString().padLeft(2, '0')}';
+
+    await _client.from('expenses').insert({
+      'user_id': userId,
+      'wallet_id': walletId,
+      'goal_id': goalId,
+      'category_name': 'Savings',
+      'amount': amount,
+      'description': description,
+      'spent_on': todayStr,
+    });
   }
 
   @override

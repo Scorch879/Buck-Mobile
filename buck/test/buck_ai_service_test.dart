@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:buck/core/constants/buck_ai_constants.dart';
 import 'package:buck/core/constants/dev_config.dart';
+import 'package:buck/core/constants/supabase_constants.dart';
 import 'package:buck/features/ai/data/models/ai_chat_message.dart';
 import 'package:buck/features/ai/data/models/ai_insight_response.dart';
 import 'package:buck/features/ai/data/services/buck_ai_service.dart';
@@ -12,6 +14,7 @@ import 'package:buck/features/ai/presentation/widgets/ai_floating_chat_bubble.da
 import 'package:buck/features/ai/presentation/widgets/ai_report_dialog.dart';
 import 'package:buck/features/expenses/presentation/add_expense_dialog.dart';
 import 'package:buck/features/finance/data/finance_models.dart';
+import 'package:buck/features/goals/data/goal_model.dart';
 
 class _FakeHttpClient extends http.BaseClient {
   final Future<http.StreamedResponse> Function(http.BaseRequest request) streamHandler;
@@ -292,6 +295,327 @@ void main() {
       expect(sentQuestion, contains('User: What is my daily spending limit?'));
       expect(sentQuestion, contains('Advisor: Your daily spending limit is ₱1,200.'));
       expect(sentQuestion, contains('Current question: What about next week?'));
+    });
+  });
+
+  group('BuckAiConstants Tests', () {
+    test('aiUrl defaults to universal Supabase proxy URL and ignores trailing slash in .env', () {
+      expect(
+        BuckAiConstants.aiUrl,
+        BuckAiConstants.supabaseAiProxyUrl,
+      );
+      expect(
+        BuckAiConstants.resolveAiUrl('https://buck-web-ai.vercel.app/'),
+        BuckAiConstants.supabaseAiProxyUrl,
+      );
+      expect(
+        BuckAiConstants.resolveAiUrl('https://buck-web-ai.vercel.app'),
+        BuckAiConstants.supabaseAiProxyUrl,
+      );
+      expect(
+        BuckAiConstants.resolveAiUrl(''),
+        BuckAiConstants.supabaseAiProxyUrl,
+      );
+      expect(
+        BuckAiConstants.resolveAiUrl('https://custom-ai.example.com///'),
+        'https://custom-ai.example.com',
+      );
+    });
+
+    test('candidateEndpoints normalizes path, prioritizes Supabase proxy, and deduplicates', () {
+      final fromLeadingSlash = BuckAiConstants.candidateEndpoints('/advisor/chat');
+      final fromNoSlash = BuckAiConstants.candidateEndpoints('advisor/chat');
+
+      expect(fromLeadingSlash, fromNoSlash);
+      expect(
+        fromLeadingSlash.first,
+        '${BuckAiConstants.supabaseAiProxyUrl}/advisor/chat',
+      );
+      expect(
+        Uri.parse(fromLeadingSlash.first).path,
+        contains('/advisor/chat'),
+      );
+      expect(
+        fromLeadingSlash.last,
+        'https://buck-web-ai.vercel.app/advisor/chat',
+      );
+      expect(fromLeadingSlash.toSet().length, fromLeadingSlash.length);
+
+      final webTunnelEndpoints = BuckAiConstants.buildCandidateEndpoints(
+        'advisor/chat',
+        isWeb: true,
+        baseUri: Uri.parse('https://buck-phone.loca.lt/home'),
+      );
+      expect(webTunnelEndpoints, [
+        '${BuckAiConstants.supabaseAiProxyUrl}/advisor/chat',
+        'https://buck-phone.loca.lt/advisor/chat',
+        'https://buck-web-ai.vercel.app/advisor/chat',
+      ]);
+
+      final webVercelEndpoints = BuckAiConstants.buildCandidateEndpoints(
+        '/advisor/chat',
+        isWeb: true,
+        baseUri: Uri.parse('https://bucktbt.vercel.app/'),
+      );
+      expect(webVercelEndpoints, [
+        '${BuckAiConstants.supabaseAiProxyUrl}/advisor/chat',
+        'https://buck-web-ai.vercel.app/advisor/chat',
+      ]);
+    });
+  });
+
+  group('BuckAiService Failover & Live Supabase Fallback Tests', () {
+    SupabaseAdvisorContext buildSampleContext({
+      List<AiAdvisory> advisories = const [],
+      bool emptyAccount = false,
+    }) {
+      final now = DateTime(2026, 11, 15, 10, 0);
+      if (emptyAccount) {
+        return SupabaseAdvisorContext(
+          profileName: 'New User',
+          activeWalletId: 'w-empty',
+          wallets: const [Wallet(id: 'w-empty', name: 'Cash', balance: 0)],
+          now: now,
+        );
+      }
+      return SupabaseAdvisorContext(
+        profileName: 'Alex',
+        activeWalletId: 'w-main',
+        wallets: const [
+          Wallet(id: 'w-main', name: 'Main Wallet', balance: 8000),
+          Wallet(id: 'w-sav', name: 'Savings', balance: 12000),
+        ],
+        expenses: [
+          ExpenseRecord(
+            id: 'e1',
+            walletId: 'w-main',
+            categoryName: 'Food',
+            amount: 2500,
+            description: 'Groceries and lunch',
+            spentOn: DateTime(2026, 11, 10),
+          ),
+          ExpenseRecord(
+            id: 'e2',
+            walletId: 'w-main',
+            categoryName: 'Transportation',
+            amount: 900,
+            description: 'Grab rides',
+            spentOn: DateTime(2026, 11, 12),
+          ),
+        ],
+        incomes: [
+          IncomeRecord(
+            id: 'i1',
+            walletId: 'w-main',
+            source: 'Salary',
+            amount: 20000,
+            receivedOn: DateTime(2026, 11, 5),
+          ),
+        ],
+        goals: const [
+          GoalItem(
+            id: 'g1',
+            title: 'Emergency Fund',
+            targetDate: 'Target: Jun 2027',
+            status: GoalStatus.onTrack,
+            currentAmount: 5000,
+            targetAmount: 20000,
+            icon: Icons.shield_outlined,
+            themeColor: Colors.orange,
+            gradientColors: [Colors.orange, Colors.deepOrange],
+          ),
+        ],
+        advisories: advisories,
+        latestAdvisoryCreatedAt: '2026-11-14T08:00:00Z',
+        now: now,
+      );
+    }
+
+    test('getInsight fails over across candidate endpoints on 403 and sends apikey to non-vercel endpoints', () async {
+      final visitedHosts = <String>[];
+      final seenApiKeys = <String, String?>{};
+      final fakeClient = _FakeHttpClient((request) async {
+        visitedHosts.add(request.url.host);
+        seenApiKeys[request.url.host] = request.headers['apikey'];
+        if (request.url.host.endsWith('.supabase.co')) {
+          return http.Response('{"error":"gateway blocked"}', 403);
+        }
+        return http.Response(
+          jsonEncode({
+            'id': 'ins-failover',
+            'title': 'Recovered Insight',
+            'suggestion': 'Keep pacing steady',
+            'advice': 'Fallback endpoint responded',
+            'financialHealthScore': 82,
+            'priority': 'low',
+            'focus': 'savings',
+            'walletAdvice': 'Protect Savings wallet',
+            'generatedWith': 'gemini',
+            'createdAt': '2026-11-15T06:00:00Z',
+          }),
+          200,
+        );
+      });
+
+      final service = BuckAiService(
+        client: fakeClient,
+        useCandidateEndpoints: true,
+      );
+      final insight = await service.getInsight(token: 'jwt-123');
+
+      expect(insight.id, 'ins-failover');
+      expect(visitedHosts, [
+        'glnuzqmnmzuxgujmxigx.supabase.co',
+        'buck-web-ai.vercel.app',
+      ]);
+      expect(
+        seenApiKeys['glnuzqmnmzuxgujmxigx.supabase.co'],
+        SupabaseConstants.anonKey,
+      );
+      expect(seenApiKeys['buck-web-ai.vercel.app'], isNull);
+    });
+
+    test('getInsight rethrows 401 immediately without failing over or falling back to Supabase', () async {
+      var requestCount = 0;
+      var fallbackCalled = false;
+      final fakeClient = _FakeHttpClient((_) async {
+        requestCount++;
+        return http.Response('{"detail":"Invalid JWT"}', 401);
+      });
+
+      final service = BuckAiService(
+        client: fakeClient,
+        useCandidateEndpoints: true,
+        liveSupabaseContextLoader: () async {
+          fallbackCalled = true;
+          return buildSampleContext();
+        },
+      );
+
+      await expectLater(
+        () => service.getInsight(token: 'expired-jwt'),
+        throwsA(
+          isA<BuckAiException>().having((e) => e.statusCode, 'statusCode', 401),
+        ),
+      );
+      expect(requestCount, 1);
+      expect(fallbackCalled, isFalse);
+    });
+
+    test('streamChat fails over cleanly on SSE error before deltas and falls back to Live Supabase Advisor when all HTTP endpoints fail', () async {
+      // Case 1: SSE error on candidate 1 before any delta -> failover to candidate 2
+      var attempt = 0;
+      final failoverClient = _FakeHttpClient.chunked((request) async {
+        attempt++;
+        if (attempt == 1) {
+          return http.StreamedResponse(
+            Stream.value(
+              utf8.encode('data: {"type":"error","message":"Upstream down"}\n\n'),
+            ),
+            200,
+            headers: {'content-type': 'text/event-stream'},
+          );
+        }
+        return http.StreamedResponse(
+          Stream.fromIterable([
+            utf8.encode('data: {"type":"delta","text":"Recovered "}\n\n'),
+            utf8.encode('data: {"type":"delta","text":"reply"}\n\n'),
+            utf8.encode('data: {"type":"done"}\n\n'),
+          ]),
+          200,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      });
+
+      final failoverService = BuckAiService(
+        client: failoverClient,
+        useCandidateEndpoints: true,
+      );
+      final tokens = await failoverService
+          .streamChat('How is my spending?', token: 'jwt-123')
+          .toList();
+      expect(tokens.join(), 'Recovered reply');
+      expect(attempt, 2);
+
+      // Case 2: All HTTP endpoints fail -> Live Supabase Advisor streams real context
+      final offlineClient = _FakeHttpClient.chunked((_) async {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('Bad Gateway')),
+          502,
+        );
+      });
+      final fallbackService = BuckAiService(
+        client: offlineClient,
+        useCandidateEndpoints: true,
+        liveSupabaseContextLoader: () async => buildSampleContext(),
+      );
+      final fallbackText = (await fallbackService
+              .streamChat("What's my daily spending limit?", token: 'jwt-123')
+              .toList())
+          .join();
+
+      expect(fallbackText, contains('Main Wallet'));
+      expect(fallbackText, contains('₱8,000.00'));
+      expect(fallbackText, contains('₱20,000.00'));
+      expect(fallbackText, contains('₱3,400.00'));
+      expect(fallbackText, contains('₱500.00/day'));
+      expect(fallbackText, contains('Food'));
+      expect(fallbackText, contains('Emergency Fund'));
+    });
+
+    test('Live Supabase Advisor fallback handles onboarding, advisories/synthesis in getInsight, and getGoalTip', () async {
+      final failingClient = _FakeHttpClient((_) async => http.Response('Down', 503));
+
+      // 1) Empty ₱0.00 account onboarding guidance
+      final emptyCtx = buildSampleContext(emptyAccount: true);
+      final emptyReply = BuckAiService.buildSupabaseChatReply('Help', emptyCtx);
+      expect(emptyReply, contains('₱0.00'));
+      expect(emptyReply, contains('Fund a wallet'));
+
+      final emptyInsight = BuckAiService.buildSupabaseInsight(emptyCtx);
+      expect(emptyInsight.generatedWith, 'supabase-local');
+      expect(emptyInsight.financialHealthScore, isNull);
+
+      // 2) Saved ai_advisories row used when refresh=false; synthesized when refresh=true
+      final serviceWithAdvisory = BuckAiService(
+        client: failingClient,
+        useCandidateEndpoints: true,
+        liveSupabaseContextLoader: () async => buildSampleContext(
+          advisories: const [
+            AiAdvisory(
+              id: 'adv-99',
+              title: 'Trim Dining Out',
+              suggestion: 'Cook twice a week to save ₱1,000.',
+              advice: 'Food is your largest expense this month.',
+            ),
+          ],
+        ),
+      );
+
+      final cachedFallback = await serviceWithAdvisory.getInsight(token: 'jwt-123');
+      expect(cachedFallback.id, 'adv-99');
+      expect(cachedFallback.title, 'Trim Dining Out');
+      expect(cachedFallback.generatedWith, 'supabase-local');
+      expect(cachedFallback.financialHealthScore, isNotNull);
+
+      final refreshedFallback = await serviceWithAdvisory.getInsight(
+        refresh: true,
+        token: 'jwt-123',
+      );
+      expect(refreshedFallback.generatedWith, 'supabase-local');
+      expect(refreshedFallback.cached, isFalse);
+      expect(serviceWithAdvisory.lastRegeneratedAt, isNotNull);
+
+      // 3) getGoalTip uses targetAmount, goalName, and live wallet balance
+      final goalTip = await serviceWithAdvisory.getGoalTip(
+        goalId: 'g1',
+        goalName: 'Emergency Fund',
+        targetAmount: 20000,
+        token: 'jwt-123',
+      );
+      expect(goalTip, contains('Emergency Fund'));
+      expect(goalTip, contains('Main Wallet'));
+      expect(goalTip, contains('₱8,000.00'));
     });
   });
 

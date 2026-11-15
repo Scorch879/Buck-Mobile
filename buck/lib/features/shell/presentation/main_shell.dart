@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/dev_config.dart';
-import '../../../core/theme/app_text_styles.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_layout.dart';
@@ -9,6 +8,7 @@ import '../../../core/widgets/buck_footer_nav.dart';
 import '../../../core/widgets/buck_header.dart';
 import '../../../core/widgets/buck_screen_background.dart';
 import '../../auth/data/auth_service.dart';
+import 'widgets/profile_side_panel.dart';
 import '../../dashboard/presentation/screens/home_dashboard_screen.dart';
 import '../../dashboard/presentation/widgets/quick_actions_card.dart';
 import '../../expenses/presentation/add_expense_dialog.dart';
@@ -310,6 +310,7 @@ class _MainShellState extends State<MainShell> {
                   child: GoalsScreen(
                     controller: _goals,
                     activeWalletId: snapshot.activeWallet?.id,
+                    activeWalletBalance: snapshot.activeWallet?.balance,
                     onRefresh: () async {
                       await _finance.refresh();
                       await _goals.refresh();
@@ -361,7 +362,7 @@ class _MainShellState extends State<MainShell> {
     // Anchor the floating footer near the very bottom of the screen, leaving
     // only minimal clearance for gesture home indicators or browser bars.
     final footerBottom = AppLayout.footerBottomOffset(context);
-    final contentInset = EdgeInsets.only(bottom: footerBottom);
+    final contentInset = EdgeInsets.only(bottom: footerBottom + 24);
 
     return ListenableBuilder(
       listenable: _finance,
@@ -374,7 +375,7 @@ class _MainShellState extends State<MainShell> {
     EdgeInsets contentInset,
   ) {
     return Scaffold(
-      backgroundColor: AppColors.navBarBg,
+      backgroundColor: const Color(0xFF2B1309),
       extendBody: true,
       body: Stack(
         children: [
@@ -386,11 +387,40 @@ class _MainShellState extends State<MainShell> {
                 onMenuTap: _showMenuSheet,
               ),
               Expanded(
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeTop: true,
-                  removeBottom: true,
-                  child: _body(contentInset),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final height = constraints.maxHeight;
+                    if (height <= 0) return const SizedBox.shrink();
+                    final fadeStart =
+                        ((height - footerBottom - BuckFooterNav.height - 16) /
+                                height)
+                            .clamp(0.0, 1.0);
+                    final fadeEnd =
+                        ((height - footerBottom - BuckFooterNav.height * 0.55) /
+                                height)
+                            .clamp(fadeStart, 1.0);
+
+                    return ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (bounds) => LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: const [
+                          Colors.white,
+                          Colors.white,
+                          Colors.transparent,
+                          Colors.transparent,
+                        ],
+                        stops: [0.0, fadeStart, fadeEnd, 1.0],
+                      ).createShader(bounds),
+                      child: MediaQuery.removePadding(
+                        context: context,
+                        removeTop: true,
+                        removeBottom: true,
+                        child: _body(contentInset),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

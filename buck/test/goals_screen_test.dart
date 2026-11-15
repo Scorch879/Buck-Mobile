@@ -1,3 +1,5 @@
+import 'package:buck/features/goals/data/goal_model.dart';
+import 'package:buck/features/goals/data/goals_repository.dart';
 import 'package:buck/features/goals/presentation/allocate_funds_dialog.dart';
 import 'package:buck/features/goals/presentation/create_goal_dialog.dart';
 import 'package:buck/features/goals/presentation/goals_controller.dart';
@@ -119,4 +121,74 @@ void main() {
     expect(find.text('Financial Goals'), findsOneWidget);
     expect(find.text('Emergency Fund'), findsOneWidget);
   });
+
+  testWidgets('New account with empty GoalsDataSource shows zero demo goals or funds', (tester) async {
+    final emptyRepo = _EmptyGoalsRepository();
+    final controller = GoalsController(repository: emptyRepo);
+    addTearDown(controller.dispose);
+
+    // Must not start with pre-populated demo goals/funds when backed by a real repository
+    expect(controller.hasRepository, isTrue);
+    expect(controller.goals, isEmpty);
+
+    await controller.refresh();
+    expect(controller.goals, isEmpty);
+
+    tester.view.physicalSize = const Size(440, 956);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GoalsScreen(
+            controller: controller,
+            onRefresh: () async {},
+            onAction: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GoalCard), findsNothing);
+    expect(find.text('Emergency Fund'), findsNothing);
+    expect(find.text('₱45,200'), findsNothing);
+    expect(
+      find.text('No goals yet. Tap "+ Create Goal" to begin tracking savings!'),
+      findsOneWidget,
+    );
+  });
+}
+
+class _EmptyGoalsRepository implements GoalsDataSource {
+  @override
+  Future<List<GoalItem>> loadGoals() async => const [];
+
+  @override
+  Future<GoalItem> addGoal({
+    required String title,
+    required double targetAmount,
+    required double initialAmount,
+    required String targetDate,
+    required IconData icon,
+    required Color themeColor,
+    required List<Color> gradientColors,
+    String? walletId,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> allocateFunds({
+    required String goalId,
+    required double amount,
+    String? walletId,
+  }) async =>
+      false;
+
+  @override
+  Future<void> deleteGoal(String goalId) async {}
+
+  @override
+  void Function() watch(void Function() onChange) => () {};
 }

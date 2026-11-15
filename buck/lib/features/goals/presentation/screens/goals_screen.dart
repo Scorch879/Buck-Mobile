@@ -15,6 +15,7 @@ class GoalsScreen extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onAction;
   final String? activeWalletId;
+  final double? activeWalletBalance;
   final EdgeInsets bottomInset;
 
   const GoalsScreen({
@@ -23,12 +24,25 @@ class GoalsScreen extends StatelessWidget {
     required this.onRefresh,
     required this.onAction,
     this.activeWalletId,
+    this.activeWalletBalance,
     this.bottomInset = EdgeInsets.zero,
   });
 
   Future<void> _handleCreateGoal(BuildContext context) async {
     final result = await showCreateGoalDialog(context);
-    if (result != null) {
+    if (result == null) return;
+    if (controller.hasRepository && result.initialAmount > 0) {
+      if (activeWalletId == null) {
+        onAction('Create a wallet first before adding initial saved funds.');
+        return;
+      }
+      if (activeWalletBalance != null &&
+          result.initialAmount > activeWalletBalance!) {
+        onAction('Initial saved amount exceeds your active wallet balance.');
+        return;
+      }
+    }
+    try {
       await controller.addGoal(
         title: result.title,
         targetAmount: result.targetAmount,
@@ -37,20 +51,46 @@ class GoalsScreen extends StatelessWidget {
         icon: result.icon,
         themeColor: result.themeColor,
         gradientColors: result.gradientColors,
+        walletId: activeWalletId,
       );
+      if (result.initialAmount > 0) {
+        await onRefresh();
+      }
       onAction("Goal '${result.title}' created successfully!");
+    } catch (e) {
+      onAction('Could not create goal: $e');
     }
   }
 
   Future<void> _handleAllocateFunds(BuildContext context, GoalItem goal) async {
+    if (controller.hasRepository) {
+      if (activeWalletId == null) {
+        onAction('Create or select a wallet first to allocate funds.');
+        return;
+      }
+      if (activeWalletBalance != null && activeWalletBalance! <= 0) {
+        onAction(
+          'Your active wallet has ₱0 balance. Add income to your wallet first.',
+        );
+        return;
+      }
+    }
     final amount = await showAllocateFundsDialog(context, goal: goal);
-    if (amount != null && amount > 0) {
+    if (amount == null || amount <= 0) return;
+    if (controller.hasRepository &&
+        activeWalletBalance != null &&
+        amount > activeWalletBalance!) {
+      onAction('Insufficient wallet balance to allocate ₱${amount.toInt()}.');
+      return;
+    }
+    try {
       final success = await controller.allocateFunds(
         goal.id,
         amount,
         walletId: activeWalletId,
       );
       if (success) {
+        await onRefresh();
         final updatedGoal = controller.goals.firstWhere((g) => g.id == goal.id);
         if (updatedGoal.status == GoalStatus.completed) {
           onAction("🎉 Congratulations! You achieved your '${goal.title}' goal!");
@@ -58,6 +98,8 @@ class GoalsScreen extends StatelessWidget {
           onAction("Allocated ₱${amount.toInt()} to ${goal.title}.");
         }
       }
+    } catch (e) {
+      onAction('Could not allocate funds: $e');
     }
   }
 
@@ -169,7 +211,16 @@ class GoalsScreen extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       // 2. Dynamic Goal Cards
-                      if (goals.isEmpty)
+                      if (controller.isLoading && goals.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primaryOrange,
+                            ),
+                          ),
+                        )
+                      else if (goals.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(32),
                           alignment: Alignment.center,
