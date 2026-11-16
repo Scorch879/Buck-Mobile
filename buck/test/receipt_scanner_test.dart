@@ -4,7 +4,6 @@ import 'package:buck/features/expenses/data/receipt_ocr_processor.dart';
 import 'package:buck/features/expenses/presentation/add_expense_dialog.dart';
 import 'package:buck/features/expenses/presentation/screens/expenses_screen.dart';
 import 'package:buck/features/expenses/presentation/screens/receipt_scanner_screen.dart';
-import 'package:buck/features/finance/data/dev_finance_source.dart';
 import 'package:buck/features/finance/data/finance_models.dart';
 import 'package:buck/features/finance/data/finance_repository.dart';
 import 'package:buck/features/finance/domain/finance_snapshot.dart';
@@ -13,6 +12,8 @@ import 'package:buck/features/income/presentation/add_income_dialog.dart';
 import 'package:buck/features/shell/presentation/main_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/dev_finance_source.dart';
 
 void main() {
   group('ReceiptScannerScreen', () {
@@ -60,6 +61,10 @@ void main() {
     testWidgets(
         'clicking Scan Receipt button in MainShell opens ReceiptScannerScreen and populates Add Spending',
         (tester) async {
+      ReceiptScannerScreen.allowSampleFallbackForTesting = true;
+      addTearDown(
+        () => ReceiptScannerScreen.allowSampleFallbackForTesting = false,
+      );
       tester.view.physicalSize = const Size(440, 956);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -93,6 +98,38 @@ void main() {
       expect(find.text('Add Spending'), findsOneWidget);
       expect(find.text('842.50'), findsOneWidget);
       expect(find.text('Fresh Mart - Makati (#098765)'), findsOneWidget);
+    });
+
+    testWidgets(
+        'shutter in production mode does not fabricate a receipt when camera is unavailable',
+        (tester) async {
+      ReceiptScannerScreen.allowSampleFallbackForTesting = false;
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: ReceiptScannerScreen(enableLiveCamera: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('scanner_shutter_button')));
+      await tester.pumpAndSettle();
+
+      // Still on scanner with helpful status message instead of fabricated data.
+      expect(find.byType(ReceiptScannerScreen), findsOneWidget);
+      expect(
+        find.text('Camera unavailable — check permission or pick a photo.'),
+        findsOneWidget,
+      );
+      expect(find.text('Fresh Mart - Makati (#098765)'), findsNothing);
+    });
+
+    test('processReceipt does not synthesize fake merchant when no bytes exist by default',
+        () async {
+      final out = await ReceiptOcrProcessor.processReceipt();
+      expect(out.usedNativeOcr, isFalse);
+      expect(out.parsed.totalAmount, 0);
+      expect(out.parsed.merchantName, 'Unreadable receipt');
+      expect(out.quality?.isLowQuality, isTrue);
     });
   });
 

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/supabase_service.dart';
@@ -61,13 +61,14 @@ class AuthService {
   static const String mobileRedirectUrl = 'buck://auth-callback';
 
   /// Where Supabase sends the user back after Google sign-in.
-  /// - Web: back to this Flutter app's own origin with trailing slash (e.g. http://localhost:8080/),
-  ///   which matches Supabase allowlists like 'http://localhost:8080/' or 'http://localhost:8080/**'.
+  /// - Web: back to the app's current base path (preserving sub-path deployments
+  ///   while stripping transient `code`/`state` OAuth query params & fragments).
   /// - Android/iOS: the custom `buck://auth-callback` deep link.
   static String get oauthRedirectUrl {
     if (kIsWeb) {
-      final origin = Uri.base.origin;
-      return origin.endsWith('/') ? origin : '$origin/';
+      final clean = Uri.base.replace(queryParameters: const {}, fragment: '');
+      final raw = clean.toString();
+      return raw.endsWith('/') ? raw : '$raw/';
     }
     return mobileRedirectUrl;
   }
@@ -94,8 +95,9 @@ class AuthService {
         if (directUrl.isNotEmpty) {
           targetUrl = directUrl;
         }
-      } catch (_) {
+      } catch (e) {
         // Fall back to the standard Supabase OAuth URL if the RPC fails.
+        debugPrint('Custom Google OAuth RPC fallback: $e');
       }
     }
 

@@ -160,6 +160,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   }
 
   Future<void> _pickDate() async {
+    final palette = BuckPalette.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
@@ -167,10 +168,15 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
       lastDate: DateTime.now(),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.primaryOrange,
-            surface: AppColors.cardSurfaceAlt,
-          ),
+          colorScheme: palette.isLight
+              ? ColorScheme.light(
+                  primary: AppColors.primaryOrange,
+                  surface: palette.cardSurface,
+                )
+              : const ColorScheme.dark(
+                  primary: AppColors.primaryOrange,
+                  surface: AppColors.cardSurfaceAlt,
+                ),
         ),
         child: child!,
       ),
@@ -214,6 +220,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -221,11 +228,11 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
         constraints: const BoxConstraints(maxWidth: 400),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.glassCardBg,
+            color: palette.glassCardBg,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.glassCardBorder, width: 1),
-            boxShadow: const [
-              BoxShadow(color: AppColors.glassCardGlow, blurRadius: 28),
+            border: Border.all(color: palette.glassCardBorder, width: 1),
+            boxShadow: [
+              BoxShadow(color: palette.glassCardGlow, blurRadius: 28),
             ],
           ),
           child: SingleChildScrollView(
@@ -234,7 +241,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 16,
               children: [
-                _header(),
+                _header(palette),
                 if (_scannedReceipt != null)
                   _IncomeOcrBanner(
                     receipt: _scannedReceipt!,
@@ -244,6 +251,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                 _OverlayField(
                   label: 'Amount',
                   child: _input(
+                    palette: palette,
                     controller: _amountController,
                     hint: '0.00',
                     keyboardType: const TextInputType.numberWithOptions(
@@ -254,7 +262,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                     ],
                   ),
                 ),
-                _OverlayField(label: 'Category', child: _categoryField()),
+                _OverlayField(label: 'Category', child: _categoryField(palette)),
                 _OverlayField(
                   label: 'Date',
                   child: _InputBox(
@@ -264,7 +272,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                         Expanded(
                           child: Text(
                             _dateFormat.format(_date),
-                            style: _valueStyle,
+                            style: _valueStyle(palette),
                           ),
                         ),
                         SvgPicture.asset('assets/icons/calendar.svg'),
@@ -275,11 +283,12 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                 _OverlayField(
                   label: 'Description',
                   child: _input(
+                    palette: palette,
                     controller: _descriptionController,
                     hint: 'Enter Description (optional)',
                   ),
                 ),
-                _submitButton(),
+                _submitButton(palette),
               ],
             ),
           ),
@@ -288,7 +297,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
     );
   }
 
-  Widget _header() {
+  Widget _header(BuckPalette palette) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -303,7 +312,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   height: 18 / 15,
-                  color: AppColors.textAccent,
+                  color: palette.textAccent,
                 ),
               ),
               Text(
@@ -312,7 +321,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                   fontSize: 25,
                   fontWeight: FontWeight.w800,
                   height: 32 / 25,
-                  color: AppColors.textPrimary,
+                  color: palette.textPrimary,
                 ),
               ),
             ],
@@ -344,17 +353,17 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
     );
   }
 
-  Widget _categoryField() {
+  Widget _categoryField(BuckPalette palette) {
     return _InputBox(
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _source,
           isExpanded: true,
-          dropdownColor: AppColors.inputBg,
+          dropdownColor: palette.inputBg,
           borderRadius: BorderRadius.circular(12),
           icon: SvgPicture.asset('assets/icons/select_chevron.svg'),
-          hint: Text('Enter Category', style: _hintStyle),
-          style: _valueStyle,
+          hint: Text('Enter Category', style: _hintStyle(palette)),
+          style: _valueStyle(palette),
           items: [
             for (final source in incomeSources)
               DropdownMenuItem(value: source, child: Text(source)),
@@ -366,6 +375,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   }
 
   Widget _input({
+    required BuckPalette palette,
     required TextEditingController controller,
     required String hint,
     TextInputType? keyboardType,
@@ -377,36 +387,38 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
         enabled: !_saving,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
-        style: _valueStyle,
+        style: _valueStyle(palette),
         cursorColor: AppColors.primaryOrange,
         decoration: InputDecoration(
           isCollapsed: true,
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: _hintStyle,
+          hintStyle: _hintStyle(palette),
         ),
       ),
     );
   }
 
-  Widget _submitButton() {
+  Widget _submitButton(BuckPalette palette) {
     return SizedBox(
       width: double.infinity,
       height: 54,
       child: Material(
-        color: AppColors.raisedCream,
+        color: palette.isLight ? AppColors.primaryOrange : AppColors.raisedCream,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: _saving ? null : _submit,
           child: Center(
             child: _saving
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      color: Color(0xFF1D110C),
+                      color: palette.isLight
+                          ? Colors.white
+                          : const Color(0xFF1D110C),
                     ),
                   )
                 : Text(
@@ -415,7 +427,9 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       height: 24 / 18,
-                      color: const Color(0xFF1D110C),
+                      color: palette.isLight
+                          ? Colors.white
+                          : const Color(0xFF1D110C),
                     ),
                   ),
           ),
@@ -424,17 +438,17 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
     );
   }
 
-  static final TextStyle _hintStyle = GoogleFonts.inter(
-    fontSize: 16,
-    height: 22 / 16,
-    color: AppColors.textSecondary,
-  );
+  TextStyle _hintStyle(BuckPalette palette) => GoogleFonts.inter(
+        fontSize: 16,
+        height: 22 / 16,
+        color: palette.textSecondary,
+      );
 
-  static final TextStyle _valueStyle = GoogleFonts.inter(
-    fontSize: 16,
-    height: 22 / 16,
-    color: AppColors.textPrimary,
-  );
+  TextStyle _valueStyle(BuckPalette palette) => GoogleFonts.inter(
+        fontSize: 16,
+        height: 22 / 16,
+        color: palette.textPrimary,
+      );
 }
 
 /// Label above a 56px input box (Figma "Field / …", 91px tall).
@@ -446,6 +460,7 @@ class _OverlayField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 10,
@@ -456,7 +471,7 @@ class _OverlayField extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             height: 20 / 14,
-            color: AppColors.textPrimary,
+            color: palette.textPrimary,
           ),
         ),
         child,
@@ -473,6 +488,7 @@ class _InputBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -481,9 +497,9 @@ class _InputBox extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         alignment: Alignment.centerLeft,
         decoration: BoxDecoration(
-          color: AppColors.inputBg,
+          color: palette.inputBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.subtleDivider, width: 1),
+          border: Border.all(color: palette.divider, width: 1),
         ),
         child: child,
       ),
@@ -498,26 +514,25 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF4A100B),
+        color: palette.dangerSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFEA4335).withValues(alpha: 0.6),
-        ),
+        border: Border.all(color: palette.dangerBorder),
       ),
       child: Row(
         spacing: 10,
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 18),
+          Icon(Icons.error_outline, color: palette.dangerTitle, size: 18),
           Expanded(
             child: Text(
               message,
               style: GoogleFonts.inter(
                 fontSize: 12,
-                color: const Color(0xFFFFD1D1),
+                color: palette.dangerTitle,
               ),
             ),
           ),

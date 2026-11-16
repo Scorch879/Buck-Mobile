@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:buck/core/constants/buck_ai_constants.dart';
-import 'package:buck/core/constants/dev_config.dart';
 import 'package:buck/core/constants/supabase_constants.dart';
 import 'package:buck/features/ai/data/models/ai_chat_message.dart';
 import 'package:buck/features/ai/data/models/ai_insight_response.dart';
@@ -37,10 +36,6 @@ class _FakeHttpClient extends http.BaseClient {
 }
 
 void main() {
-  tearDown(() {
-    DevConfig.mockAdminSessionActive.value = false;
-  });
-
   group('BuckAiService Unit Tests', () {
     test('getInsight parses valid AI insight response and preserves nullable score', () async {
       final fakeClient = _FakeHttpClient((request) async {
@@ -174,17 +169,17 @@ void main() {
       );
     });
 
-    test('Dev Mode session returns simulated insights and categories offline', () async {
-      DevConfig.mockAdminSessionActive.value = true;
+    test('categorize falls back locally when endpoints fail without session token', () async {
       final fakeClient = _FakeHttpClient((_) async => http.Response('Unauthorized', 401));
       final service = BuckAiService(client: fakeClient);
 
-      final insight = await service.getInsight();
-      expect(insight.generatedWith, 'dev-preview');
-      expect(insight.financialHealthScore, isNotNull);
-
       final cats = await service.categorize(descriptions: ['Shell gas station']);
       expect(cats, ['Transportation']);
+
+      await expectLater(
+        () => service.getInsight(),
+        throwsA(isA<BuckAiException>().having((e) => e.statusCode, 'statusCode', 401)),
+      );
     });
 
     test('mapToMobileCategory uses whole-word boundaries and avoids substring false positives', () {

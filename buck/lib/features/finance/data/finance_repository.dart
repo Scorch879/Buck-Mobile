@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'finance_models.dart';
@@ -176,7 +177,7 @@ class FinanceRepository implements FinanceDataSource {
     );
   }
 
-  /// Records an expense and debits the wallet balance.
+  /// Records an expense and debits the wallet balance atomically in Postgres.
   @override
   Future<void> addExpense({
     required String walletId,
@@ -192,7 +193,7 @@ class FinanceRepository implements FinanceDataSource {
     }
     final normalizedCat = categoryName.trim().toLowerCase();
     var categoryId = _categoryIdsByName[normalizedCat];
-    if (categoryId == null) {
+    if (categoryId == null && normalizedCat.isNotEmpty) {
       try {
         final cat = await _client
             .from('categories')
@@ -207,38 +208,23 @@ class FinanceRepository implements FinanceDataSource {
             _categoryIdsByName[normalizedCat] = categoryId;
           }
         }
-      } catch (_) {}
-    }
-
-    await _client.from('expenses').insert({
-      'user_id': userId,
-      'wallet_id': walletId,
-      'category_id': categoryId,
-      'category_name': categoryName,
-      'amount': amount,
-      'description': description,
-      'spent_on': _dateOnly(spentOn),
-    });
-
-    try {
-      final wallet = await _client
-          .from('wallets')
-          .select('budget')
-          .eq('id', walletId)
-          .eq('user_id', userId)
-          .maybeSingle();
-      if (wallet != null) {
-        final current = _toDouble(wallet['budget']);
-        final newBudget = (current - amount).clamp(0.0, double.infinity);
-        await _client
-            .from('wallets')
-            .update({'budget': newBudget})
-            .eq('id', walletId)
-            .eq('user_id', userId);
+      } catch (e) {
+        debugPrint('Category lookup fallback for "$categoryName": $e');
       }
-    } catch (_) {
-      // Wallet balance update fallback
     }
+
+    await _client.rpc(
+      'add_expense_atomic',
+      params: {
+        'p_wallet_id': walletId,
+        'p_amount': amount,
+        'p_category_id': categoryId,
+        'p_category_name': categoryName,
+        'p_spent_on': _dateOnly(spentOn),
+        'p_description': description,
+        'p_goal_id': null,
+      },
+    );
   }
 
   @override
@@ -266,7 +252,9 @@ class FinanceRepository implements FinanceDataSource {
       if (profile != null && profile['active_wallet_id'] == null && res != null) {
         await setActiveWallet(res['id'] as String);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to auto-select initial active wallet: $e');
+    }
   }
 
   @override
@@ -309,10 +297,4 @@ class FinanceRepository implements FinanceDataSource {
       '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
-
-  static double _toDouble(Object? value) {
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0;
-    return 0;
-  }
 }

@@ -1,0 +1,5 @@
+# Copy to android/key.properties (never commit real secrets or keystore files).
+storePassword=REPLACE_WITH_STORE_PASSWORD
+keyPassword=REPLACE_WITH_KEY_PASSWORD
+keyAlias=buck
+storeFile=../buck-release.jks

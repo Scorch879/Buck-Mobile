@@ -248,8 +248,16 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('Please enter a short summary or details.'),
+      find.text('Please enter a short summary and details.'),
       findsOneWidget,
+    );
+  });
+
+  test('SettingsService.sha256Email normalizes case and whitespace like Postgres',
+      () {
+    expect(
+      SettingsService.sha256Email(' User@Example.COM '),
+      'b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514',
     );
   });
 
@@ -265,6 +273,7 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         DangerZoneScreen(
+          onSubmitDeletion: () async {},
           onDeletionConfirmed: () async {
             deletionConfirmed = true;
           },
@@ -295,6 +304,51 @@ void main() {
     await tester.tap(find.text('Request deletion').last);
     await tester.pumpAndSettle();
     expect(deletionConfirmed, isTrue);
+  });
+
+  testWidgets(
+      'DangerZoneScreen shows error snackbar and skips sign-out when deletion request fails',
+      (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var deletionConfirmed = false;
+
+    await tester.pumpWidget(
+      _wrap(
+        DangerZoneScreen(
+          onSubmitDeletion: () async {
+            throw StateError('Edge function missing');
+          },
+          onDeletionConfirmed: () async {
+            deletionConfirmed = true;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('danger_zone_delete_input')),
+      'DELETE',
+    );
+    await tester.pump();
+
+    final requestButton = find.byKey(const Key('danger_zone_request_button'));
+    await tester.ensureVisible(requestButton);
+    await tester.tap(requestButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Request deletion').last);
+    await tester.pumpAndSettle();
+
+    expect(deletionConfirmed, isFalse);
+    expect(
+      find.textContaining('Unable to submit account deletion request right now'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('SettingsScaffold honors top, bottom, and horizontal bar safe insets',

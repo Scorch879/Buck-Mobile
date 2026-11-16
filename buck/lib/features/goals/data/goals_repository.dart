@@ -31,7 +31,8 @@ abstract class GoalsDataSource {
 }
 
 /// Supabase implementation of [GoalsDataSource].
-/// Reads and writes to `public.goals` and coordinates wallet debits via atomic updates.
+/// Reads `public.goals` (excluding soft-deleted rows) and uses transactional
+/// Postgres RPCs for atomic goal creation, wallet debits, and fund allocation.
 class GoalsRepository implements GoalsDataSource {
   final SupabaseClient _client;
 
@@ -50,6 +51,7 @@ class GoalsRepository implements GoalsDataSource {
         .from('goals')
         .select('*')
         .eq('user_id', userId)
+        .isFilter('deleted_at', null)
         .order('is_active', ascending: false)
         .order('created_at', ascending: false);
 
@@ -70,55 +72,25 @@ class GoalsRepository implements GoalsDataSource {
     required List<Color> gradientColors,
     String? walletId,
   }) async {
-    final userId = _userId;
+    final dateStr = _formatTargetDate(targetDate);
+    final row = await _client.rpc(
+      'create_goal_atomic',
+      params: {
+        'p_goal_name': title.trim(),
+        'p_target_amount': targetAmount,
+        'p_initial_amount': initialAmount,
+        'p_target_date': dateStr,
+        'p_wallet_id':
+            (initialAmount > 0 && walletId != null && walletId.isNotEmpty)
+                ? walletId
+                : null,
+        'p_attitude': 'Moderate',
+      },
+    );
 
-    // Parse date if possible from "Target: MMM yyyy" or "Target: yyyy-MM-dd"
-    DateTime? parsedDate;
-    try {
-      final cleaned = targetDate.replaceFirst('Target:', '').trim();
-      parsedDate = DateFormat('MMM yyyy').parse(cleaned);
-      parsedDate = DateTime(parsedDate.year, parsedDate.month + 1, 0);
-    } catch (_) {
-      try {
-        final cleaned = targetDate.replaceFirst('Target:', '').trim();
-        parsedDate = DateTime.parse(cleaned);
-      } catch (_) {
-        parsedDate = DateTime.now().add(const Duration(days: 365));
-      }
+    if (row is! Map<String, dynamic>) {
+      throw StateError('Unexpected create_goal_atomic response');
     }
-
-    final dateStr =
-        '${parsedDate.year.toString().padLeft(4, '0')}-'
-        '${parsedDate.month.toString().padLeft(2, '0')}-'
-        '${parsedDate.day.toString().padLeft(2, '0')}';
-
-    final isCompleted = initialAmount >= targetAmount && targetAmount > 0;
-
-    final row = await _client
-        .from('goals')
-        .insert({
-          'user_id': userId,
-          'goal_name': title.trim(),
-          'target_amount': targetAmount,
-          'current_amount': initialAmount,
-          'attitude': 'Moderate',
-          'target_date': dateStr,
-          'completed': isCompleted,
-          'is_active': !isCompleted,
-        })
-        .select()
-        .single();
-
-    if (initialAmount > 0 && walletId != null && walletId.isNotEmpty) {
-      await _debitWalletAndLogSavings(
-        userId: userId,
-        walletId: walletId,
-        goalId: row['id'] as String,
-        amount: initialAmount,
-        description: 'Initial savings for ${title.trim()}',
-      );
-    }
-
     return GoalItem.fromRow(row);
   }
 
@@ -129,98 +101,31 @@ class GoalsRepository implements GoalsDataSource {
     String? walletId,
   }) async {
     if (amount <= 0) return false;
-    final userId = _userId;
-
-    // 1. Fetch current goal state
-    final goalRow = await _client
-        .from('goals')
-        .select('current_amount, target_amount, goal_name')
-        .eq('id', goalId)
-        .eq('user_id', userId)
-        .single();
-
-    final current = _toDouble(goalRow['current_amount']);
-    final target = _toDouble(goalRow['target_amount']);
-    final goalName = (goalRow['goal_name'] as String?)?.trim() ?? 'Goal';
-    final updated = current + amount;
-    final completed = updated >= target && target > 0;
-
-    // 2. Update goal balance in database
-    await _client
-        .from('goals')
-        .update({
-          'current_amount': updated,
-          'completed': completed,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', goalId)
-        .eq('user_id', userId);
-
-    // 3. If walletId provided, deduct from wallet and log as savings expense
-    if (walletId != null && walletId.isNotEmpty) {
-      await _debitWalletAndLogSavings(
-        userId: userId,
-        walletId: walletId,
-        goalId: goalId,
-        amount: amount,
-        description: 'Allocated to $goalName',
-      );
-    }
-
+    await _client.rpc(
+      'allocate_goal_funds_atomic',
+      params: {
+        'p_goal_id': goalId,
+        'p_amount': amount,
+        'p_wallet_id':
+            (walletId != null && walletId.isNotEmpty) ? walletId : null,
+      },
+    );
     return true;
-  }
-
-  /// Deducts [amount] from [walletId] and records a `'Savings'` expense row so
-  /// Wallet, Home, Expenses, and Stats stay synchronized with goal transfers.
-  Future<void> _debitWalletAndLogSavings({
-    required String userId,
-    required String walletId,
-    required String goalId,
-    required double amount,
-    required String description,
-  }) async {
-    final walletRow = await _client
-        .from('wallets')
-        .select('budget')
-        .eq('id', walletId)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-    if (walletRow == null) return;
-
-    final curBudget = _toDouble(walletRow['budget']);
-    final newBudget = (curBudget - amount).clamp(0.0, double.infinity);
-
-    await _client
-        .from('wallets')
-        .update({
-          'budget': newBudget,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', walletId)
-        .eq('user_id', userId);
-
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year.toString().padLeft(4, '0')}-'
-        '${today.month.toString().padLeft(2, '0')}-'
-        '${today.day.toString().padLeft(2, '0')}';
-
-    await _client.from('expenses').insert({
-      'user_id': userId,
-      'wallet_id': walletId,
-      'goal_id': goalId,
-      'category_name': 'Savings',
-      'amount': amount,
-      'description': description,
-      'spent_on': todayStr,
-    });
   }
 
   @override
   Future<void> deleteGoal(String goalId) async {
     final userId = _userId;
-    await _client.from('goals').delete().eq('id', goalId).eq('user_id', userId);
+    // Soft-delete aligns with `check_goal_deletion` (which preserves ledger
+    // integrity by blocking hard deletes on goals with allocated funds).
+    await _client
+        .from('goals')
+        .update({
+          'deleted_at': DateTime.now().toUtc().toIso8601String(),
+          'is_active': false,
+        })
+        .eq('id', goalId)
+        .eq('user_id', userId);
   }
 
   @override
@@ -242,9 +147,18 @@ class GoalsRepository implements GoalsDataSource {
     return () => _client.removeChannel(channel);
   }
 
-  static double _toDouble(Object? value) {
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
+  static String _formatTargetDate(String targetDate) {
+    final cleaned = targetDate.replaceFirst('Target:', '').trim();
+    DateTime? parsedDate;
+    try {
+      final monthYear = DateFormat('MMM yyyy').parseStrict(cleaned);
+      parsedDate = DateTime(monthYear.year, monthYear.month + 1, 0);
+    } on FormatException {
+      parsedDate = DateTime.tryParse(cleaned);
+    }
+    parsedDate ??= DateTime.now().add(const Duration(days: 365));
+    return '${parsedDate.year.toString().padLeft(4, '0')}-'
+        '${parsedDate.month.toString().padLeft(2, '0')}-'
+        '${parsedDate.day.toString().padLeft(2, '0')}';
   }
 }

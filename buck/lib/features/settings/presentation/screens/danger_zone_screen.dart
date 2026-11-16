@@ -10,8 +10,13 @@ import '../widgets/settings_dialogs.dart';
 /// Figma `Danger Zone` (`2498:863`).
 class DangerZoneScreen extends StatefulWidget {
   final Future<void> Function() onDeletionConfirmed;
+  final Future<void> Function()? onSubmitDeletion;
 
-  const DangerZoneScreen({super.key, required this.onDeletionConfirmed});
+  const DangerZoneScreen({
+    super.key,
+    required this.onDeletionConfirmed,
+    this.onSubmitDeletion,
+  });
 
   @override
   State<DangerZoneScreen> createState() => _DangerZoneScreenState();
@@ -41,8 +46,17 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
 
     setState(() => _submitting = true);
     try {
-      await SettingsService.instance.requestAccountDeletion();
+      final submit =
+          widget.onSubmitDeletion ?? SettingsService.instance.requestAccountDeletion;
+      await submit();
       await widget.onDeletionConfirmed();
+    } catch (e) {
+      if (!mounted) return;
+      showSettingsSnackBar(
+        context,
+        'Unable to submit account deletion request right now: $e',
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

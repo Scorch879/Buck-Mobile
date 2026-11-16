@@ -7,9 +7,15 @@ import '../../../finance/domain/finance_snapshot.dart';
 
 /// Modal bottom sheet displaying detailed net worth breakdown across all wallets.
 void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
+  final palette = BuckPalette.of(context);
+  final sheetBg =
+      palette.isLight ? palette.cardSurface : const Color(0xFF140C08);
+  final activeCyan =
+      palette.isLight ? const Color(0xFF00796B) : const Color(0xFF56D3C7);
+
   showModalBottomSheet(
     context: context,
-    backgroundColor: const Color(0xFF140C08),
+    backgroundColor: sheetBg,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -29,7 +35,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0x33FF994A),
+                    color: AppColors.headerBorder.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -42,7 +48,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
-                  color: const Color(0xFFD98B5C),
+                  color: palette.textAccent,
                 ),
               ),
               const SizedBox(height: 4),
@@ -51,14 +57,14 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                 style: GoogleFonts.manrope(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFFFFF7EE),
+                  color: palette.textPrimary,
                 ),
               ),
               Text(
                 'Across ${snapshot.wallets.length} active wallets',
                 style: GoogleFonts.inter(
                   fontSize: 12,
-                  color: const Color(0xFFC6B5AB),
+                  color: palette.textSecondary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -78,8 +84,8 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: w.id == snapshot.activeWallet?.id
-                                  ? const Color(0xFF56D3C7)
-                                  : const Color(0xFFFF994A),
+                                  ? activeCyan
+                                  : AppColors.headerBorder,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -91,7 +97,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFD5E2F5),
+                                  color: palette.cardTitle,
                                 ),
                               ),
                               if (w.id == snapshot.activeWallet?.id)
@@ -100,7 +106,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                                   style: GoogleFonts.inter(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF56D3C7),
+                                    color: activeCyan,
                                   ),
                                 ),
                             ],
@@ -115,7 +121,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                             style: GoogleFonts.manrope(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFFFFF7EE),
+                              color: palette.textPrimary,
                             ),
                           ),
                           Text(
@@ -124,7 +130,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                                 : '0%',
                             style: GoogleFonts.inter(
                               fontSize: 10,
-                              color: const Color(0xFFC6B5AB),
+                              color: palette.textSecondary,
                             ),
                           ),
                         ],
@@ -132,7 +138,7 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                     ],
                   ),
                 ),
-                const Divider(color: Color(0x1FFF994A), height: 8),
+                Divider(color: palette.divider, height: 8),
               ],
               const SizedBox(height: 16),
 
@@ -141,10 +147,10 @@ void showWalletNetWorthSheet(BuildContext context, FinanceSnapshot snapshot) {
                 onPressed: () => Navigator.of(ctx).pop(),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  backgroundColor: const Color(0xFF24170F),
+                  backgroundColor: palette.surfaceElevated,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0x33FF994A)),
+                    side: BorderSide(color: palette.border),
                   ),
                 ),
                 child: Text(
