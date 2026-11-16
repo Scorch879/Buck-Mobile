@@ -46,7 +46,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
     if (!mounted) return;
     showSettingsSnackBar(
       context,
-      'Account deletion confirmation instructions have been queued.',
+      'Account deletion scheduled with a 10-day recovery window.',
     );
     Navigator.of(context).popUntil((route) => route.isFirst);
     await widget.onSignOut();

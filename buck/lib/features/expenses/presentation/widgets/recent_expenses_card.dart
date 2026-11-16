@@ -18,6 +18,8 @@ class RecentExpensesCard extends StatefulWidget {
   final VoidCallback? onAdd;
   final VoidCallback? onScanReceipt;
   final ValueChanged<ExpenseRecord>? onTapExpense;
+  final GlobalKey? cardHighlightKey;
+  final GlobalKey? addButtonHighlightKey;
 
   const RecentExpensesCard({
     super.key,
@@ -25,6 +27,8 @@ class RecentExpensesCard extends StatefulWidget {
     this.onAdd,
     this.onScanReceipt,
     this.onTapExpense,
+    this.cardHighlightKey,
+    this.addButtonHighlightKey,
   });
 
   static final _dateFormat = DateFormat('MMM dd, yyyy');
@@ -50,6 +54,7 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
     final total = widget.expenses.fold<double>(0, (sum, e) => sum + e.amount);
 
     return BuckGlassCard(
+      key: widget.cardHighlightKey,
       height: 300,
       radius: 20,
       glowBlur: 28,
@@ -66,6 +71,7 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
             _ListHeader(
               onAdd: widget.onAdd,
               onScanReceipt: widget.onScanReceipt,
+              addButtonKey: widget.addButtonHighlightKey,
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(15, 13, 16, 15),
@@ -143,8 +149,9 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
 class _ListHeader extends StatelessWidget {
   final VoidCallback? onAdd;
   final VoidCallback? onScanReceipt;
+  final GlobalKey? addButtonKey;
 
-  const _ListHeader({this.onAdd, this.onScanReceipt});
+  const _ListHeader({this.onAdd, this.onScanReceipt, this.addButtonKey});
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +189,7 @@ class _ListHeader extends StatelessWidget {
             _ScanReceiptButton(onTap: onScanReceipt),
             const SizedBox(width: 8),
           ],
-          _PlusButton(onTap: onAdd),
+          _PlusButton(key: addButtonKey, onTap: onAdd),
         ],
       ),
     );
@@ -262,7 +269,7 @@ class _ScanReceiptButtonState extends State<_ScanReceiptButton> {
 class _PlusButton extends StatefulWidget {
   final VoidCallback? onTap;
 
-  const _PlusButton({this.onTap});
+  const _PlusButton({super.key, this.onTap});
 
   @override
   State<_PlusButton> createState() => _PlusButtonState();

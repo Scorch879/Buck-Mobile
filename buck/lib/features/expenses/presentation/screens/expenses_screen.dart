@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_layout.dart';
 import '../../../../core/utils/currency.dart';
 import '../../../finance/domain/finance_snapshot.dart';
+import '../../../onboarding/presentation/buck_onboarding_targets.dart';
 import '../widgets/expense_metrics_card.dart';
 import '../widgets/monthly_cash_flow_card.dart';
 import '../widgets/recent_expenses_card.dart';
@@ -17,6 +18,7 @@ class ExpensesScreen extends StatelessWidget {
   final VoidCallback? onAddExpense;
   final VoidCallback? onScanReceipt;
   final EdgeInsets bottomInset;
+  final BuckOnboardingTargets? onboardingTargets;
 
   const ExpensesScreen({
     super.key,
@@ -25,6 +27,7 @@ class ExpensesScreen extends StatelessWidget {
     this.onAddExpense,
     this.onScanReceipt,
     this.bottomInset = EdgeInsets.zero,
+    this.onboardingTargets,
   });
 
   static final _monthFormat = DateFormat('MMMM yyyy');
@@ -79,6 +82,9 @@ class ExpensesScreen extends StatelessWidget {
                     expenses: s.monthExpenseList,
                     onAdd: onAddExpense,
                     onScanReceipt: onScanReceipt,
+                    cardHighlightKey: onboardingTargets?.recentExpensesCardKey,
+                    addButtonHighlightKey:
+                        onboardingTargets?.expensesAddButtonKey,
                   ),
                 ],
               ),

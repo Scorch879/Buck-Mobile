@@ -21,6 +21,8 @@ class ManageWalletsCard extends StatefulWidget {
   final String? activeWalletId;
   final ValueChanged<String> onSelectActive;
   final VoidCallback onNewWallet;
+  final GlobalKey? cardHighlightKey;
+  final GlobalKey? newWalletButtonKey;
 
   const ManageWalletsCard({
     super.key,
@@ -28,6 +30,8 @@ class ManageWalletsCard extends StatefulWidget {
     required this.activeWalletId,
     required this.onSelectActive,
     required this.onNewWallet,
+    this.cardHighlightKey,
+    this.newWalletButtonKey,
   });
 
   @override
@@ -69,6 +73,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
         palette.isLight ? palette.textAccent : const Color(0xFFFF8E5D);
 
     return Container(
+      key: widget.cardHighlightKey,
       decoration: BoxDecoration(
         color: palette.isLight
             ? palette.glassCardBg
@@ -367,6 +372,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
 
           // 4. "+ New Wallet" Button (Figma: #2426:1628)
           GestureDetector(
+            key: widget.newWalletButtonKey,
             onTap: widget.onNewWallet,
             behavior: HitTestBehavior.opaque,
             child: Container(

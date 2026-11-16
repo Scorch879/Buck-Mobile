@@ -135,6 +135,27 @@ class FinanceController extends ChangeNotifier {
     await refresh();
   }
 
+  /// Transfers [amount] between two wallets and reloads.
+  /// Throws a readable [String] message on failure.
+  Future<void> transferFunds({
+    required String sourceWalletId,
+    required String targetWalletId,
+    required double amount,
+  }) async {
+    try {
+      await _repository.transferFunds(
+        sourceWalletId: sourceWalletId,
+        targetWalletId: targetWalletId,
+        amount: amount,
+      );
+    } on PostgrestException catch (e) {
+      throw e.message;
+    } catch (e) {
+      throw e is String ? e : 'Could not transfer funds. Please try again.';
+    }
+    await refresh();
+  }
+
   // Coalesce bursts of realtime events (e.g. expense + wallet update).
   void _scheduleRefresh() {
     _debounce?.cancel();

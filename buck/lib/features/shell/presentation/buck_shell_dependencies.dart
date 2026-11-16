@@ -69,5 +69,14 @@ class _UnavailableFinanceSource implements FinanceDataSource {
   }
 
   @override
+  Future<void> transferFunds({
+    required String sourceWalletId,
+    required String targetWalletId,
+    required double amount,
+  }) async {
+    throw StateError('Supabase is not initialized.');
+  }
+
+  @override
   void Function() watch(void Function() onChange) => () {};
 }

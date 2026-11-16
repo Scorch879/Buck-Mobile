@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_layout.dart';
+import '../../../core/utils/currency.dart';
 import '../../../core/widgets/buck_footer_nav.dart';
 import '../../../core/widgets/buck_header.dart';
 import '../../../core/widgets/buck_screen_background.dart';
@@ -16,12 +17,18 @@ import '../../dashboard/presentation/widgets/quick_actions_card.dart';
 import '../../expenses/presentation/add_expense_dialog.dart';
 import '../../expenses/presentation/screens/expenses_screen.dart';
 import '../../expenses/presentation/screens/receipt_scanner_screen.dart';
+import '../../finance/data/finance_models.dart';
 import '../../finance/presentation/finance_controller.dart';
 import '../../goals/presentation/goals_controller.dart';
 import '../../goals/presentation/screens/goals_screen.dart';
 import '../../income/presentation/add_income_dialog.dart';
+import '../../onboarding/data/onboarding_service.dart';
+import '../../onboarding/presentation/buck_onboarding_overlay.dart';
+import '../../onboarding/presentation/buck_onboarding_targets.dart';
 import '../../stats/presentation/screens/stats_screen.dart';
 import '../../wallet/presentation/screens/wallet_screen.dart';
+import '../../wallet/presentation/widgets/create_wallet_dialog.dart';
+import '../../wallet/presentation/widgets/transfer_funds_dialog.dart';
 import '../../ai/presentation/widgets/ai_report_dialog.dart';
 import '../../ai/presentation/widgets/ai_floating_chat_bubble.dart';
 
@@ -32,12 +39,16 @@ class MainShell extends StatefulWidget {
   /// Injected in tests; defaults to one backed by the live Supabase client.
   final FinanceController? financeController;
   final GoalsController? goalsController;
+  final OnboardingService? onboardingService;
+  final bool? showOnboardingOverride;
 
   const MainShell({
     super.key,
     this.initialTab = BuckTab.home,
     this.financeController,
     this.goalsController,
+    this.onboardingService,
+    this.showOnboardingOverride,
   });
 
   @override
@@ -46,20 +57,42 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   final _authService = AuthService();
+  final _onboardingTargets = BuckOnboardingTargets();
   late BuckTab _tab = widget.initialTab;
   PageController? _pageController;
   int? _programmaticPageTarget;
   bool _menuOpen = false;
+  late bool _showOnboarding = widget.showOnboardingOverride ?? false;
   late final FinanceController _finance =
       widget.financeController ?? BuckShellDependencies.createFinanceController();
   late final GoalsController _goals =
       widget.goalsController ?? BuckShellDependencies.createGoalsController();
+
+  OnboardingService get _onboarding =>
+      widget.onboardingService ?? OnboardingService.instance;
 
   @override
   void initState() {
     super.initState();
     _finance.start();
     _goals.start();
+    _checkOnboardingEligibility();
+  }
+
+  Future<void> _checkOnboardingEligibility() async {
+    if (widget.showOnboardingOverride != null) return;
+    final shouldShow = await _onboarding.shouldShowOnboardingForUser(
+      _authService.currentUser,
+    );
+    if (!mounted || !shouldShow) return;
+    setState(() => _showOnboarding = true);
+  }
+
+  void _completeOnboarding() {
+    if (_showOnboarding) {
+      setState(() => _showOnboarding = false);
+    }
+    _onboarding.completeOnboarding(_authService.currentUser);
   }
 
   PageController _ensurePageController() {
@@ -189,6 +222,67 @@ class _MainShellState extends State<MainShell> {
     await _addIncome(initialReceipt: scanned);
   }
 
+  Future<void> _transferFunds() async {
+    final snapshot = _finance.snapshot;
+    final wallets = snapshot?.wallets ?? const <Wallet>[];
+    if (wallets.length < 2) {
+      final shouldCreateWallet = await showTransferNeedsWalletsDialog(
+        context,
+        walletCount: wallets.length,
+      );
+      if (shouldCreateWallet == true && mounted) {
+        final req = await showCreateWalletDialog(context);
+        if (req != null && mounted) {
+          try {
+            await _finance.createWallet(
+              name: req.name,
+              initialBalance: req.initialBalance,
+            );
+            if (!mounted) return;
+            _showMessage("Wallet '${req.name}' created!");
+            final updatedWallets =
+                _finance.snapshot?.wallets ?? const <Wallet>[];
+            if (updatedWallets.length >= 2) {
+              await _openTransferDialog(
+                updatedWallets,
+                activeWalletId: _finance.snapshot?.activeWallet?.id,
+              );
+            }
+          } catch (e) {
+            if (mounted) _showMessage(e.toString());
+          }
+        }
+      }
+      return;
+    }
+
+    await _openTransferDialog(
+      wallets,
+      activeWalletId: snapshot?.activeWallet?.id,
+    );
+  }
+
+  Future<void> _openTransferDialog(
+    List<Wallet> wallets, {
+    String? activeWalletId,
+  }) async {
+    final result = await showTransferFundsDialog(
+      context,
+      wallets: wallets,
+      activeWalletId: activeWalletId,
+      onSubmit: (sourceId, targetId, amount) => _finance.transferFunds(
+        sourceWalletId: sourceId,
+        targetWalletId: targetId,
+        amount: amount,
+      ),
+    );
+    if (result != null && mounted) {
+      _showMessage(
+        'Transferred ${formatPesoCents(result.amount)} from ${result.sourceWallet.name} to ${result.targetWallet.name}.',
+      );
+    }
+  }
+
   void _onTabSelected(BuckTab tab) {
     if (!BuckFooterNav.hasDesign(tab)) {
       _showComingSoon(switch (tab) {
@@ -220,24 +314,16 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _onQuickAction(QuickAction action) {
-    if (action == QuickAction.scanReceipt) {
-      _scanReceipt();
-      return;
+    switch (action) {
+      case QuickAction.scanReceipt:
+        _scanReceipt();
+      case QuickAction.addIncome:
+        _addIncome();
+      case QuickAction.addExpense:
+        _addExpense();
+      case QuickAction.transfer:
+        _transferFunds();
     }
-    if (action == QuickAction.addIncome) {
-      _addIncome();
-      return;
-    }
-    if (action == QuickAction.addExpense) {
-      _addExpense();
-      return;
-    }
-    _showComingSoon(switch (action) {
-      QuickAction.scanReceipt => 'Scan Receipt',
-      QuickAction.addExpense => 'Add Expense',
-      QuickAction.transfer => 'Transfer',
-      QuickAction.addIncome => 'Add Income',
-    });
   }
 
   Widget _body(EdgeInsets contentInset) {
@@ -289,6 +375,7 @@ class _MainShellState extends State<MainShell> {
                 onScanIncome: _scanIncomeReceipt,
                 onMessage: _showMessage,
                 bottomInset: contentInset,
+                onboardingTargets: _onboardingTargets,
               ),
             ),
             KeyedSubtree(
@@ -299,6 +386,7 @@ class _MainShellState extends State<MainShell> {
                 onAddExpense: () => _onQuickAction(QuickAction.addExpense),
                 onScanReceipt: _scanReceipt,
                 bottomInset: contentInset,
+                onboardingTargets: _onboardingTargets,
               ),
             ),
             KeyedSubtree(
@@ -312,6 +400,7 @@ class _MainShellState extends State<MainShell> {
                   onInsightUpdated: _finance.refresh,
                 ),
                 bottomInset: contentInset,
+                onboardingTargets: _onboardingTargets,
               ),
             ),
             KeyedSubtree(
@@ -320,6 +409,7 @@ class _MainShellState extends State<MainShell> {
                 snapshot: snapshot,
                 onRefresh: _finance.refresh,
                 bottomInset: contentInset,
+                onboardingTargets: _onboardingTargets,
               ),
             ),
             KeyedSubtree(
@@ -334,6 +424,7 @@ class _MainShellState extends State<MainShell> {
                 },
                 onAction: _showMessage,
                 bottomInset: contentInset,
+                onboardingTargets: _onboardingTargets,
               ),
             ),
           ],
@@ -447,6 +538,15 @@ class _MainShellState extends State<MainShell> {
               },
             ),
           ),
+          if (_showOnboarding && _finance.snapshot != null)
+            Positioned.fill(
+              child: BuckOnboardingOverlay(
+                targets: _onboardingTargets,
+                currentTab: _tab,
+                onNavigateToTab: _onTabSelected,
+                onComplete: _completeOnboarding,
+              ),
+            ),
         ],
       ),
     );

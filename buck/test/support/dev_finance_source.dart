@@ -230,6 +230,37 @@ class DevFinanceSource implements FinanceDataSource {
   }
 
   @override
+  Future<void> transferFunds({
+    required String sourceWalletId,
+    required String targetWalletId,
+    required double amount,
+  }) async {
+    final source = _data.wallets.firstWhere((w) => w.id == sourceWalletId);
+    if (sourceWalletId == targetWalletId || amount <= 0 || source.balance < amount) {
+      throw StateError('Invalid transfer request');
+    }
+    _data = FinanceData(
+      profileName: _data.profileName,
+      activeWalletId: _data.activeWalletId,
+      wallets: [
+        for (final w in _data.wallets)
+          if (w.id == sourceWalletId)
+            Wallet(id: w.id, name: w.name, balance: w.balance - amount)
+          else if (w.id == targetWalletId)
+            Wallet(id: w.id, name: w.name, balance: w.balance + amount)
+          else
+            w,
+      ],
+      expenses: _data.expenses,
+      incomes: _data.incomes,
+      advisories: _data.advisories,
+    );
+    for (final cb in _listeners) {
+      cb();
+    }
+  }
+
+  @override
   void Function() watch(void Function() onChange) {
     _listeners.add(onChange);
     return () => _listeners.remove(onChange);

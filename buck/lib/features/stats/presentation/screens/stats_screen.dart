@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_layout.dart';
 import '../../../../core/utils/currency.dart';
 import '../../../finance/domain/finance_snapshot.dart';
+import '../../../onboarding/presentation/buck_onboarding_targets.dart';
 import '../../domain/stats_data.dart';
 import '../widgets/category_breakdown_card.dart';
 import '../widgets/spending_trend_card.dart';
@@ -18,12 +19,14 @@ class StatsScreen extends StatefulWidget {
   final FinanceSnapshot snapshot;
   final Future<void> Function() onRefresh;
   final EdgeInsets bottomInset;
+  final BuckOnboardingTargets? onboardingTargets;
 
   const StatsScreen({
     super.key,
     required this.snapshot,
     required this.onRefresh,
     this.bottomInset = EdgeInsets.zero,
+    this.onboardingTargets,
   });
 
   @override
@@ -93,38 +96,48 @@ class _StatsScreenState extends State<StatsScreen> {
                 spacing: 16,
                 children: [
                   // 1. Figma Category Breakdown Card (#2402:1560)
-                  CategoryBreakdownCard(
-                    summary: summary,
-                    selectedPeriod: _selectedPeriod,
-                    onPeriodChanged: (period) {
-                      setState(() {
-                        _selectedPeriod = period;
-                      });
-                    },
-                    selectedCategoryId: _selectedCategoryId,
-                    onCategoryChanged: (catId) {
-                      setState(() {
-                        _selectedCategoryId = catId;
-                      });
-                    },
+                  KeyedSubtree(
+                    key: widget.onboardingTargets?.categoryBreakdownCardKey,
+                    child: CategoryBreakdownCard(
+                      summary: summary,
+                      selectedPeriod: _selectedPeriod,
+                      periodPillsKey:
+                          widget.onboardingTargets?.categoryPeriodPillsKey,
+                      onPeriodChanged: (period) {
+                        setState(() {
+                          _selectedPeriod = period;
+                        });
+                      },
+                      selectedCategoryId: _selectedCategoryId,
+                      onCategoryChanged: (catId) {
+                        setState(() {
+                          _selectedCategoryId = catId;
+                        });
+                      },
+                    ),
                   ),
 
                   // 2. Figma Spending Trend Line Graph Card (#2462:577)
-                  SpendingTrendCard(
-                    trendData: trendData,
-                    selectedPeriod: _selectedPeriod,
-                    onPeriodChanged: (period) {
-                      setState(() {
-                        _selectedPeriod = period;
-                      });
-                    },
-                    selectedCategoryId: _selectedCategoryId,
-                    selectedCategory: selectedCat,
-                    onClearCategory: () {
-                      setState(() {
-                        _selectedCategoryId = null;
-                      });
-                    },
+                  KeyedSubtree(
+                    key: widget.onboardingTargets?.spendingTrendCardKey,
+                    child: SpendingTrendCard(
+                      trendData: trendData,
+                      selectedPeriod: _selectedPeriod,
+                      periodPillsKey:
+                          widget.onboardingTargets?.trendPeriodPillsKey,
+                      onPeriodChanged: (period) {
+                        setState(() {
+                          _selectedPeriod = period;
+                        });
+                      },
+                      selectedCategoryId: _selectedCategoryId,
+                      selectedCategory: selectedCat,
+                      onClearCategory: () {
+                        setState(() {
+                          _selectedCategoryId = null;
+                        });
+                      },
+                    ),
                   ),
 
                   // 3. Collapsible Activity Dropdown Card (latest 5 entries)

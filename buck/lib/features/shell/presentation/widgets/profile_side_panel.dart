@@ -168,7 +168,7 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
   Future<void> _handleDeletionConfirmed() async {
     widget.hostNavigator.popUntil((route) => route.isFirst);
     widget.onShowMessage?.call(
-      'Account deletion confirmation instructions have been queued.',
+      'Account deletion scheduled with a 10-day recovery window.',
     );
     await widget.onSignOut();
   }

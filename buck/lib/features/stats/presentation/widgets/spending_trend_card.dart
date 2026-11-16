@@ -18,6 +18,7 @@ class SpendingTrendCard extends StatefulWidget {
   final String? selectedCategoryId;
   final StatsCategory? selectedCategory;
   final VoidCallback? onClearCategory;
+  final GlobalKey? periodPillsKey;
 
   const SpendingTrendCard({
     super.key,
@@ -27,6 +28,7 @@ class SpendingTrendCard extends StatefulWidget {
     this.selectedCategoryId,
     this.selectedCategory,
     this.onClearCategory,
+    this.periodPillsKey,
   });
 
   @override
@@ -148,6 +150,7 @@ class _SpendingTrendCardState extends State<SpendingTrendCard> {
 
         // Time Filters Row (Figma: #2462:569)
         Wrap(
+          key: widget.periodPillsKey,
           spacing: 6,
           runSpacing: 6,
           children: [

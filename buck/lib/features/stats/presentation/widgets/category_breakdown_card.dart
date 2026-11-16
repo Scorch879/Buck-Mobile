@@ -13,6 +13,7 @@ class CategoryBreakdownCard extends StatefulWidget {
   final ValueChanged<StatsPeriod> onPeriodChanged;
   final String? selectedCategoryId;
   final ValueChanged<String?> onCategoryChanged;
+  final GlobalKey? periodPillsKey;
 
   const CategoryBreakdownCard({
     super.key,
@@ -21,6 +22,7 @@ class CategoryBreakdownCard extends StatefulWidget {
     required this.onPeriodChanged,
     required this.selectedCategoryId,
     required this.onCategoryChanged,
+    this.periodPillsKey,
   });
 
   @override
@@ -111,6 +113,7 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
             const SizedBox(height: 8),
             // Period Filter Pills row with wrap (Figma: #2404:546)
             Wrap(
+              key: widget.periodPillsKey,
               spacing: 6,
               runSpacing: 6,
               children: [
