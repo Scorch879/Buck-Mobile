@@ -275,13 +275,15 @@ class _SpendingTrendCardState extends State<SpendingTrendCard> {
                 top: 0,
                 width: chartWidth,
                 height: chartHeight,
-                child: CustomPaint(
-                  size: Size(chartWidth, chartHeight),
-                  painter: _SpendingTrendPainter(
-                    points: points,
-                    scaleCeiling: scaleCeiling,
-                    lineColor: lineColor,
-                    hoveredIndex: _hoveredIndex,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    size: Size(chartWidth, chartHeight),
+                    painter: _SpendingTrendPainter(
+                      points: points,
+                      scaleCeiling: scaleCeiling,
+                      lineColor: lineColor,
+                      hoveredIndex: _hoveredIndex,
+                    ),
                   ),
                 ),
               ),
