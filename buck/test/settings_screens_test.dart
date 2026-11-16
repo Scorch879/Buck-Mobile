@@ -97,22 +97,18 @@ void main() {
     expect(find.text('Email is managed by Google.'), findsOneWidget);
   });
 
-  testWidgets('SettingsMenuScreen filters rows on search and opens sign out dialog',
+  testWidgets('SettingsMenuScreen filters rows on search and has no duplicate sign out',
       (tester) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    var signedOut = false;
-
     await tester.pumpWidget(
       _wrap(
         SettingsMenuScreen(
           settingsContext: _googleContext(),
-          onSignOut: () async {
-            signedOut = true;
-          },
+          onSignOut: () async {},
         ),
       ),
     );
@@ -138,17 +134,8 @@ void main() {
     );
     await tester.pump();
 
-    final signOutButton = find.byKey(const Key('settings_sign_out_button'));
-    await tester.ensureVisible(signOutButton);
-    await tester.tap(signOutButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Sign out of Buck?'), findsOneWidget);
-    expect(find.text('Stay signed in'), findsOneWidget);
-
-    await tester.tap(find.text('Sign out').last);
-    await tester.pumpAndSettle();
-    expect(signedOut, isTrue);
+    expect(find.byKey(const Key('settings_sign_out_button')), findsNothing);
+    expect(find.text('Sign out'), findsNothing);
   });
 
   testWidgets('ProfileAccountScreen validates empty display name',

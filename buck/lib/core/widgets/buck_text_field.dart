@@ -35,33 +35,39 @@ class _BuckTextFieldState extends State<BuckTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: AppTextStyles.label),
+        Text(
+          widget.label,
+          style: AppTextStyles.label.copyWith(color: palette.textPrimary),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.inputBg,
+            color: palette.inputBg,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.inputBorder, width: 1.2),
+            border: Border.all(color: palette.border, width: 1.2),
           ),
           child: TextFormField(
             controller: widget.controller,
             obscureText: _obscureText,
             keyboardType: widget.keyboardType,
             validator: widget.validator,
-            style: AppTextStyles.body,
+            style: AppTextStyles.body.copyWith(color: palette.textPrimary),
             decoration: InputDecoration(
               hintText: widget.placeholder,
-              hintStyle: AppTextStyles.bodySubdued,
+              hintStyle: AppTextStyles.bodySubdued.copyWith(
+                color: palette.textSecondary,
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               suffixIcon: widget.isPassword
                   ? IconButton(
                       icon: Icon(
                         _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                        color: AppColors.textSecondary,
+                        color: palette.textSecondary,
                         size: 20,
                       ),
                       onPressed: () {

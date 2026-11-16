@@ -36,19 +36,20 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.glassCardBg,
+        color: palette.glassCardBg,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: AppColors.glassCardBorder,
+          color: palette.glassCardBorder,
           width: 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x2EFF6A13),
+            color: palette.glassCardGlow,
             blurRadius: 28,
-            offset: Offset(0, 0),
+            offset: const Offset(0, 0),
           ),
         ],
       ),
@@ -79,6 +80,7 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
   }
 
   Widget _buildHeader() {
+    final palette = BuckPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -88,7 +90,7 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
             fontSize: 10,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
-            color: const Color(0xFFD98B5C),
+            color: palette.textAccent,
           ),
         ),
         const SizedBox(height: 4),
@@ -101,7 +103,7 @@ class _CategoryBreakdownCardState extends State<CategoryBreakdownCard> {
               style: GoogleFonts.manrope(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFD5E2F5),
+                color: palette.cardTitle,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

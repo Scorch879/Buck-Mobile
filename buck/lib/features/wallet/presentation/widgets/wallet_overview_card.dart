@@ -21,6 +21,7 @@ class WalletOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final activeWallet = snapshot.activeWallet;
     final walletName = activeWallet?.name ?? 'My Wallet';
     final balance = activeWallet?.balance ?? 0.0;
@@ -28,17 +29,17 @@ class WalletOverviewCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.glassCardBg,
+        color: palette.glassCardBg,
         borderRadius: BorderRadius.circular(36),
         border: Border.all(
-          color: AppColors.glassCardBorder,
+          color: palette.glassCardBorder,
           width: 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x2EFF6A13),
+            color: palette.glassCardGlow,
             blurRadius: 28,
-            offset: Offset(0, 0),
+            offset: const Offset(0, 0),
           ),
         ],
       ),
@@ -53,7 +54,7 @@ class WalletOverviewCard extends StatelessWidget {
               fontSize: 28,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.3,
-              color: const Color(0xFFD5E2F5),
+              color: palette.cardTitle,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -75,7 +76,7 @@ class WalletOverviewCard extends StatelessWidget {
                       fontSize: 36,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
-                      color: const Color(0xFFFFFFFF),
+                      color: palette.metricValue,
                     ),
                   ),
                 ),

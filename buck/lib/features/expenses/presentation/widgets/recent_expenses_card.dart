@@ -46,14 +46,17 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final total = widget.expenses.fold<double>(0, (sum, e) => sum + e.amount);
 
     return BuckGlassCard(
       height: 300,
       radius: 20,
       glowBlur: 28,
-      // Figma stacks black @20% over black @70%.
-      background: const Color(0xC2000000),
+      // Figma stacks black @20% over black @70% in Dark mode; crisp card in Light mode.
+      background: palette.isLight
+          ? palette.glassCardBg
+          : const Color(0xC2000000),
       padding: EdgeInsets.zero,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(19),
@@ -64,11 +67,11 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
               onAdd: widget.onAdd,
               onScanReceipt: widget.onScanReceipt,
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(15, 13, 16, 15),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 13, 16, 15),
               child: ColoredBox(
-                color: AppColors.subtleDivider,
-                child: SizedBox(height: 1),
+                color: palette.divider,
+                child: const SizedBox(height: 1),
               ),
             ),
             Expanded(
@@ -81,8 +84,8 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
                   thickness: 4,
                   radius: const Radius.circular(2),
                   trackRadius: const Radius.circular(2),
-                  thumbColor: AppColors.textAccent,
-                  trackColor: AppColors.inputBg,
+                  thumbColor: palette.textAccent,
+                  trackColor: palette.inputBg,
                   trackBorderColor: Colors.transparent,
                   child: widget.expenses.isEmpty
                       ? const _EmptyList()
@@ -90,9 +93,9 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
                           controller: _scrollController,
                           padding: const EdgeInsets.only(right: 16),
                           itemCount: widget.expenses.length,
-                          separatorBuilder: (_, __) => const ColoredBox(
-                            color: AppColors.inputBg,
-                            child: SizedBox(height: 1),
+                          separatorBuilder: (_, __) => ColoredBox(
+                            color: palette.subtleBorder,
+                            child: const SizedBox(height: 1),
                           ),
                           itemBuilder: (context, i) => _ExpenseRow(
                             entry: widget.expenses[i],
@@ -107,7 +110,7 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
             ),
             Container(
               height: 44,
-              color: AppColors.listFooterBg,
+              color: palette.listFooterBg,
               padding: const EdgeInsets.only(left: 16, right: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -118,12 +121,14 @@ class _RecentExpensesCardState extends State<RecentExpensesCard> {
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.6,
-                      color: AppColors.textAccent,
+                      color: palette.textAccent,
                     ),
                   ),
                   Text(
                     RecentExpensesCard.formatAmount(total),
-                    style: AppTextStyles.amountSmall,
+                    style: AppTextStyles.amountSmall.copyWith(
+                      color: palette.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -167,7 +172,7 @@ class _ListHeader extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: BuckPalette.of(context).textPrimary,
                   ),
                 ),
               ],

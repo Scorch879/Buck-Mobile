@@ -110,13 +110,14 @@ class _SettingsScaffoldState extends State<SettingsScaffold>
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final topInset = AppLayout.topSafeInset(context);
     final bottomInset = AppLayout.bottomSafeInset(context);
     final leftInset = AppLayout.leftSafeInset(context);
     final rightInset = AppLayout.rightSafeInset(context);
 
     return Scaffold(
-      backgroundColor: SettingsColors.scaffoldBg,
+      backgroundColor: palette.scaffoldDarkBg,
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         excludeFromSemantics: true,
@@ -150,13 +151,16 @@ class _SettingsScaffoldState extends State<SettingsScaffold>
                 left: 0,
                 right: 0,
                 height: math.max(16.0, topInset + 14.0),
-                child: const IgnorePointer(
+                child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [SettingsColors.scaffoldBg, Color(0x00100B09)],
+                        colors: [
+                          palette.scaffoldDarkBg,
+                          palette.scaffoldDarkBg.withValues(alpha: 0),
+                        ],
                       ),
                     ),
                   ),
@@ -167,13 +171,16 @@ class _SettingsScaffoldState extends State<SettingsScaffold>
                 left: 0,
                 right: 0,
                 height: math.max(16.0, bottomInset + 14.0),
-                child: const IgnorePointer(
+                child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [SettingsColors.scaffoldBg, Color(0x00100B09)],
+                        colors: [
+                          palette.scaffoldDarkBg,
+                          palette.scaffoldDarkBg.withValues(alpha: 0),
+                        ],
                       ),
                     ),
                   ),
@@ -210,6 +217,7 @@ class SettingsPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final handleBack = onBack ?? () => Navigator.of(context).maybePop();
 
     if (largeTitle) {
@@ -224,7 +232,7 @@ class SettingsPageHeader extends StatelessWidget {
               fontSize: 34,
               fontWeight: FontWeight.w800,
               height: 42 / 34,
-              color: SettingsColors.textPrimary,
+              color: palette.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -234,7 +242,7 @@ class SettingsPageHeader extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w400,
               height: 22 / 16,
-              color: SettingsColors.textMuted,
+              color: palette.textSecondary,
             ),
           ),
         ],
@@ -262,7 +270,7 @@ class SettingsPageHeader extends StatelessWidget {
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
                     height: 28 / 20,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
               ),
@@ -276,7 +284,7 @@ class SettingsPageHeader extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.w400,
             height: 22 / 16,
-            color: SettingsColors.textMuted,
+            color: palette.textSecondary,
           ),
         ),
       ],
@@ -292,8 +300,9 @@ class _SettingsBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Material(
-      color: filled ? SettingsColors.inputBg : Colors.transparent,
+      color: filled ? palette.inputBg : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         key: const Key('settings_back_button'),
@@ -307,6 +316,9 @@ class _SettingsBackButton extends StatelessWidget {
               'assets/icons/profile_panel_arrow_left.svg',
               width: 20,
               height: 20,
+              colorFilter: palette.isLight
+                  ? ColorFilter.mode(palette.textPrimary, BlendMode.srcIn)
+                  : null,
             ),
           ),
         ),

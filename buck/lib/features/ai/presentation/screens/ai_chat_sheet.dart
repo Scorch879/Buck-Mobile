@@ -212,30 +212,32 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final mediaQuery = MediaQuery.of(context);
     final bottomInset = mediaQuery.viewInsets.bottom;
-    final maxHeight = mediaQuery.size.height * 0.85;
+    final maxHeight =
+        ((mediaQuery.size.height - bottomInset) * 0.90).clamp(280.0, 760.0);
 
-    return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: const BoxDecoration(
-        color: Color(0xFF140B07),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          top: BorderSide(color: AppColors.glassCardBorder, width: 1.5),
-          left: BorderSide(color: AppColors.glassCardBorder, width: 0.5),
-          right: BorderSide(color: AppColors.glassCardBorder, width: 0.5),
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        decoration: BoxDecoration(
+          color: palette.chatSurfaceBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(
+            top: BorderSide(color: palette.glassCardBorder, width: 1.5),
+            left: BorderSide(color: palette.glassCardBorder, width: 0.5),
+            right: BorderSide(color: palette.glassCardBorder, width: 0.5),
+          ),
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomInset),
+        child: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildHandle(),
-              _buildHeader(context),
-              const Divider(color: AppColors.subtleDivider, height: 1),
+              _buildHandle(palette),
+              _buildHeader(context, palette),
+              Divider(color: palette.divider, height: 1),
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
@@ -243,12 +245,13 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
                     final msg = _messages[index];
-                    return _buildMessageItem(msg);
+                    return _buildMessageItem(msg, palette);
                   },
                 ),
               ),
-              if (_messages.length <= 2 && !_isStreaming) _buildQuickPrompts(),
-              _buildInputBar(),
+              if (_messages.length <= 2 && !_isStreaming)
+                _buildQuickPrompts(palette),
+              _buildInputBar(palette),
             ],
           ),
         ),
@@ -256,21 +259,21 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
     );
   }
 
-  Widget _buildHandle() {
+  Widget _buildHandle(BuckPalette palette) {
     return Center(
       child: Container(
         margin: const EdgeInsets.only(top: 10, bottom: 6),
         width: 36,
         height: 4,
         decoration: BoxDecoration(
-          color: AppColors.textSecondary.withValues(alpha: 0.4),
+          color: palette.textSecondary.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(2),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, BuckPalette palette) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 16, 12),
       child: Row(
@@ -305,7 +308,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.6,
-                    color: AppColors.textAccent,
+                    color: palette.textAccent,
                   ),
                 ),
                 Text(
@@ -313,7 +316,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
                   style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.cardTitle,
+                    color: palette.cardTitle,
                   ),
                 ),
               ],
@@ -322,15 +325,15 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
           if (_messages.length > 1)
             IconButton(
               tooltip: 'Clear chat',
-              icon: const Icon(
+              icon: Icon(
                 Icons.refresh,
-                color: AppColors.textSecondary,
+                color: palette.textSecondary,
                 size: 18,
               ),
               onPressed: _isStreaming ? null : _resetChat,
             ),
           IconButton(
-            icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+            icon: Icon(Icons.close, color: palette.textSecondary, size: 20),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -338,7 +341,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
     );
   }
 
-  Widget _buildMessageItem(AiChatMessage msg) {
+  Widget _buildMessageItem(AiChatMessage msg, BuckPalette palette) {
     final isUser = msg.isUser;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -369,8 +372,8 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isUser
-                    ? AppColors.primaryOrange.withValues(alpha: 0.9)
-                    : const Color(0xFF22130C),
+                    ? AppColors.primaryOrange.withValues(alpha: 0.92)
+                    : palette.chatBubbleAiBg,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -379,7 +382,9 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
                 ),
                 border: isUser
                     ? null
-                    : Border.all(color: AppColors.cardBorder.withValues(alpha: 0.25)),
+                    : Border.all(
+                        color: palette.glassCardBorder.withValues(alpha: 0.35),
+                      ),
               ),
               child: msg.isStreaming && msg.text.isEmpty
                   ? Row(
@@ -398,7 +403,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
                           'Buck AI is thinking...',
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: palette.textSecondary,
                           ),
                         ),
                       ],
@@ -421,7 +426,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
     );
   }
 
-  Widget _buildQuickPrompts() {
+  Widget _buildQuickPrompts(BuckPalette palette) {
     return Container(
       height: 40,
       margin: const EdgeInsets.only(bottom: 8),
@@ -437,11 +442,11 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
               prompt,
               style: GoogleFonts.inter(
                 fontSize: 11,
-                color: AppColors.textPrimary,
+                color: palette.textPrimary,
               ),
             ),
-            backgroundColor: const Color(0xFF251610),
-            side: BorderSide(color: AppColors.primaryOrange.withValues(alpha: 0.3)),
+            backgroundColor: palette.surfaceElevated,
+            side: BorderSide(color: AppColors.primaryOrange.withValues(alpha: 0.35)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onPressed: () => _sendMessage(prompt),
           );
@@ -450,7 +455,7 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
     );
   }
 
-  Widget _buildInputBar() {
+  Widget _buildInputBar(BuckPalette palette) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
@@ -461,19 +466,19 @@ class _AiChatSheetContentState extends State<_AiChatSheetContent> {
               enabled: !_isStreaming,
               textInputAction: TextInputAction.send,
               onSubmitted: _sendMessage,
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+              style: GoogleFonts.inter(color: palette.textPrimary, fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Ask financial advisor...',
                 hintStyle: GoogleFonts.inter(
-                  color: AppColors.placeholderText,
+                  color: palette.textSecondary,
                   fontSize: 13,
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 filled: true,
-                fillColor: const Color(0xFF1D0E08),
+                fillColor: palette.inputBg,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: AppColors.inputBorder),
+                  borderSide: BorderSide(color: palette.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
@@ -522,21 +527,23 @@ class AiMarkdownText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final baseStyle = GoogleFonts.inter(
       fontSize: 13,
       height: 1.48,
-      color: Colors.white,
+      color: palette.textPrimary,
       fontWeight: FontWeight.w400,
     );
     final boldStyle = baseStyle.copyWith(
       fontWeight: FontWeight.w700,
-      color: AppColors.lightPeach,
+      color: palette.isLight ? const Color(0xFFC85314) : AppColors.lightPeach,
     );
     final italicStyle = baseStyle.copyWith(fontStyle: FontStyle.italic);
     final codeStyle = GoogleFonts.jetBrainsMono(
       fontSize: 12,
-      color: AppColors.peachAccent,
-      backgroundColor: const Color(0xFF160B06),
+      color: palette.isLight ? const Color(0xFFB3440B) : AppColors.peachAccent,
+      backgroundColor:
+          palette.isLight ? const Color(0xFFEAD9CA) : const Color(0xFF160B06),
     );
 
     final lines = text.split('\n');

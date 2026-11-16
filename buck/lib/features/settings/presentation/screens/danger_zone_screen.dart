@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../data/settings_service.dart';
 import '../widgets/settings_common.dart';
 import '../widgets/settings_dialogs.dart';
@@ -49,6 +50,7 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return SettingsScaffold(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -62,9 +64,9 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: SettingsColors.dangerSurface,
+              color: palette.dangerSurface,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: SettingsColors.dangerBorder, width: 1),
+              border: Border.all(color: palette.dangerBorder, width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,7 +77,7 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                     fontSize: 25,
                     fontWeight: FontWeight.w800,
                     height: 32 / 25,
-                    color: SettingsColors.dangerTitle,
+                    color: palette.dangerTitle,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -85,14 +87,14 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
                     height: 22 / 16,
-                    color: SettingsColors.textMuted,
+                    color: palette.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: SettingsColors.dangerReminderBg,
+                    color: palette.dangerReminderBg,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -114,7 +116,7 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                             fontSize: 15,
                             fontWeight: FontWeight.w400,
                             height: 22 / 15,
-                            color: SettingsColors.textMuted,
+                            color: palette.textSecondary,
                           ),
                         ),
                       ),
@@ -128,7 +130,7 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 20 / 14,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -140,7 +142,7 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
                     height: 1.5,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                   decoration: InputDecoration(
                     hintText: 'DELETE',
@@ -148,22 +150,22 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
                       height: 1.5,
-                      color: SettingsColors.textMuted,
+                      color: palette.textSecondary,
                     ),
                     filled: true,
-                    fillColor: SettingsColors.scaffoldBg,
+                    fillColor: palette.scaffoldDarkBg,
                     contentPadding: const EdgeInsets.all(14),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: SettingsColors.dangerBorder,
+                      borderSide: BorderSide(
+                        color: palette.dangerBorder,
                         width: 1,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: SettingsColors.dangerTitle,
+                      borderSide: BorderSide(
+                        color: palette.dangerTitle,
                         width: 1.5,
                       ),
                     ),

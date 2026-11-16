@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../data/settings_service.dart';
 import '../widgets/settings_common.dart';
 
@@ -114,6 +115,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return SettingsScaffold(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -130,7 +132,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               fontSize: 13,
               fontWeight: FontWeight.w700,
               height: 18 / 13,
-              color: SettingsColors.textMuted,
+              color: palette.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -159,7 +161,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                                 height: 20 / 16,
                                 color: selected
                                     ? SettingsColors.accentOrange
-                                    : SettingsColors.textPrimary,
+                                    : palette.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -169,7 +171,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w400,
                                 height: 1.4,
-                                color: SettingsColors.textMuted,
+                                color: palette.textSecondary,
                               ),
                             ),
                           ],
@@ -199,7 +201,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     height: 20 / 16,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
               ),
@@ -208,7 +210,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: SettingsColors.textMuted,
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -227,9 +229,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 }) => null,
             style: GoogleFonts.inter(
               fontSize: 16,
-              color: SettingsColors.textPrimary,
+              color: palette.textPrimary,
             ),
-            decoration: _inputDecoration('A short summary'),
+            decoration: _inputDecoration('A short summary', palette),
           ),
           const SizedBox(height: 16),
           Row(
@@ -241,7 +243,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     height: 20 / 16,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
               ),
@@ -250,7 +252,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                  color: SettingsColors.textMuted,
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -271,10 +273,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 }) => null,
             style: GoogleFonts.inter(
               fontSize: 16,
-              color: SettingsColors.textPrimary,
+              color: palette.textPrimary,
             ),
             decoration: _inputDecoration(
               "Tell us what you'd change, what happened, or what you'd like to see...",
+              palette,
             ),
           ),
           const SizedBox(height: 16),
@@ -288,21 +291,21 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(String hint, BuckPalette palette) {
     return InputDecoration(
       hintText: hint,
       hintStyle: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 1.5,
-        color: SettingsColors.textMuted,
+        color: palette.textSecondary,
       ),
       filled: true,
-      fillColor: SettingsColors.inputBg,
+      fillColor: palette.inputBg,
       contentPadding: const EdgeInsets.all(14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: SettingsColors.border, width: 1),
+        borderSide: BorderSide(color: palette.border, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

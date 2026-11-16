@@ -106,19 +106,22 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
       return a.title.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
+    final palette = BuckPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xCC080503), // rgba(8, 5, 3, 0.8)
+        color: palette.isLight
+            ? palette.glassCardBg
+            : const Color(0xCC080503), // rgba(8, 5, 3, 0.8)
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
-          color: const Color(0xFFFF994A),
+          color: palette.glassCardBorder,
           width: 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x2EFF6A13),
+            color: palette.glassCardGlow,
             blurRadius: 28,
-            offset: Offset(0, 0),
+            offset: const Offset(0, 0),
           ),
         ],
       ),
@@ -136,7 +139,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                   style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFD5E2F5),
+                    color: palette.cardTitle,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

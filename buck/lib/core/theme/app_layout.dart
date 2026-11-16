@@ -16,7 +16,10 @@ export 'web_safe_insets_stub.dart'
 
 class AppLayout {
   static const String shellThemeHex = '#2B1309';
+  static const String shellLightThemeHex = '#F6EDE4';
   static const String darkSurfaceThemeHex = '#100B09';
+  static const String lightSurfaceThemeHex = '#FBF5EE';
+  static bool _isLightMode = false;
   static int _darkBarSurfaceDepth = 0;
 
   static ValueNotifier<web_insets.WebSafeInsets> get webSafeInsetsNotifier =>
@@ -25,23 +28,40 @@ class AppLayout {
   static void initWebSafeInsetsListener() =>
       web_insets.initWebSafeInsetsListener();
 
-  /// Switches the web browser chrome (`theme-color` & viewport background) to
-  /// `#100B09` while dark full-screen overlays/settings are mounted.
-  static void pushDarkBarSurface() {
-    _darkBarSurfaceDepth++;
-    if (_darkBarSurfaceDepth == 1) {
-      web_insets.setWebThemeColor(darkSurfaceThemeHex);
+  static void setLightMode(bool isLight) {
+    if (_isLightMode == isLight) return;
+    _isLightMode = isLight;
+    if (_darkBarSurfaceDepth > 0) {
+      web_insets.setWebThemeColor(
+        isLight ? lightSurfaceThemeHex : darkSurfaceThemeHex,
+      );
+    } else {
+      web_insets.setWebThemeColor(
+        isLight ? shellLightThemeHex : shellThemeHex,
+      );
     }
   }
 
-  /// Restores the web browser chrome to `#2B1309` once all `#100B09`
-  /// overlays/settings routes are closed.
+  /// Switches the web browser chrome (`theme-color` & viewport background) to
+  /// `#100B09` (or light surface `#FBF5EE`) while full-screen overlays/settings are mounted.
+  static void pushDarkBarSurface() {
+    _darkBarSurfaceDepth++;
+    if (_darkBarSurfaceDepth == 1) {
+      web_insets.setWebThemeColor(
+        _isLightMode ? lightSurfaceThemeHex : darkSurfaceThemeHex,
+      );
+    }
+  }
+
+  /// Restores the web browser chrome once all overlays/settings routes are closed.
   static void popDarkBarSurface() {
     if (_darkBarSurfaceDepth > 0) {
       _darkBarSurfaceDepth--;
     }
     if (_darkBarSurfaceDepth == 0) {
-      web_insets.setWebThemeColor(shellThemeHex);
+      web_insets.setWebThemeColor(
+        _isLightMode ? shellLightThemeHex : shellThemeHex,
+      );
     }
   }
 
@@ -87,9 +107,9 @@ class AppLayout {
     return math.max(viewRight, webRight);
   }
 
-  /// Bottom clearance for the floating [BuckFooterNav] so it sits cleanly above
-  /// both hardware home indicators and mobile Safari's floating bottom bar,
-  /// adapting dynamically as browser toolbars expand or collapse.
+  /// Bottom clearance for the floating [BuckFooterNav] so it sits comfortably
+  /// raised above hardware home indicators, Android gesture pills, and mobile
+  /// Safari's bottom bar without vertical shifting.
   static double footerBottomOffset(BuildContext context) {
     final webInsets = web_insets.readWebSafeInsets();
     final viewPaddingBottom = math.max(
@@ -97,11 +117,13 @@ class AppLayout {
       webInsets.bottom,
     );
     if (webInsets.browserBarBottom > 0) {
-      return math.max(10.0, webInsets.browserBarBottom * 0.32).clamp(10.0, 20.0);
+      return math.max(16.0, webInsets.browserBarBottom * 0.35 + 6.0)
+          .clamp(16.0, 26.0);
     }
     if (viewPaddingBottom > 0) {
-      return (viewPaddingBottom * 0.35).clamp(6.0, 16.0);
+      return math.max(18.0, viewPaddingBottom * 0.40 + 12.0)
+          .clamp(18.0, 32.0);
     }
-    return 6.0;
+    return 18.0;
   }
 }

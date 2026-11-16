@@ -33,6 +33,7 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   StatsPeriod _selectedPeriod = StatsPeriod.allTime;
   String? _selectedCategoryId;
+  bool _activityExpanded = false;
 
   static final _dateFormat = DateFormat('MMM d, yyyy');
 
@@ -126,7 +127,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     },
                   ),
 
-                  // 3. Filtered Transactions Activity Card
+                  // 3. Collapsible Activity Dropdown Card (latest 5 entries)
                   _buildActivityCard(visibleExpenses, selectedCat),
                 ],
               ),
@@ -141,133 +142,205 @@ class _StatsScreenState extends State<StatsScreen> {
     List dynamicExpenses,
     StatsCategory? selectedCategory,
   ) {
+    final palette = BuckPalette.of(context);
     final title = selectedCategory != null
         ? '${selectedCategory.name} Expenses'
         : '${_selectedPeriod.label} Activity';
 
+    final latestFive = List.of(dynamicExpenses)
+      ..sort((a, b) => b.spentOn.compareTo(a.spentOn));
+    final displayed = latestFive.take(5).toList();
+    final countLabel = dynamicExpenses.length > 5
+        ? 'Latest 5 of ${dynamicExpenses.length}'
+        : '${dynamicExpenses.length} ${dynamicExpenses.length == 1 ? 'entry' : 'entries'}';
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.glassCardBg,
+        color: palette.glassCardBg,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColors.glassCardBorder.withValues(alpha: 0.5),
+          color: palette.glassCardBorder.withValues(alpha: 0.65),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(color: palette.glassCardGlow, blurRadius: 18),
+        ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title.toUpperCase(),
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: selectedCategory?.color ?? const Color(0xFFD98B5C),
-                ),
-              ),
-              Text(
-                '${dynamicExpenses.length} entries',
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFFC6B5AB),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (dynamicExpenses.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Text(
-                  'No expenses recorded for this selection.',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFFC6B5AB),
-                  ),
-                ),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: dynamicExpenses.length,
-              separatorBuilder: (_, __) => const Divider(
-                color: Color(0x1FFF994A),
-                height: 16,
-              ),
-              itemBuilder: (context, index) {
-                final expense = dynamicExpenses[index];
-                final catKey = StatsCalculator.mapCategory(expense.categoryName);
-                final catColor = _categoryColor(catKey);
-
-                return Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: catColor.withValues(alpha: 0.16),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: catColor.withValues(alpha: 0.4),
-                          width: 1,
+          InkWell(
+            key: const Key('stats_activity_dropdown_toggle'),
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => _activityExpanded = !_activityExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title.toUpperCase(),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color:
+                                selectedCategory?.color ?? palette.textAccent,
+                          ),
                         ),
-                      ),
-                      child: Icon(
-                        _categoryIcon(catKey),
-                        color: catColor,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            expense.description.isNotEmpty
-                                ? expense.description
-                                : expense.categoryName,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFFFF7EE),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 3),
+                        Text(
+                          'Recent Activity',
+                          style: GoogleFonts.manrope(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: palette.cardTitle,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _dateFormat.format(expense.spentOn),
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: const Color(0xFFC6B5AB),
-                            ),
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: palette.surfaceElevated,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: palette.subtleBorder,
+                        width: 1,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '-${formatPeso(expense.amount)}',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF6B6B),
+                    child: Text(
+                      countLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: palette.textSecondary,
                       ),
                     ),
-                  ],
-                );
-              },
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: _activityExpanded ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: palette.textAccent,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            child: !_activityExpanded
+                ? const SizedBox.shrink()
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
+                      if (displayed.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: Text(
+                              'No expenses recorded for this selection.',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: palette.textSecondary,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: displayed.length,
+                          separatorBuilder: (_, __) => Divider(
+                            color: palette.divider,
+                            height: 16,
+                          ),
+                          itemBuilder: (context, index) {
+                            final expense = displayed[index];
+                            final catKey =
+                                StatsCalculator.mapCategory(expense.categoryName);
+                            final catColor = _categoryColor(catKey);
+
+                            return Row(
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: catColor.withValues(alpha: 0.16),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: catColor.withValues(alpha: 0.4),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    _categoryIcon(catKey),
+                                    color: catColor,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        expense.description.isNotEmpty
+                                            ? expense.description
+                                            : expense.categoryName,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: palette.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _dateFormat.format(expense.spentOn),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: palette.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '-${formatPeso(expense.amount)}',
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFFFF6B6B),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+          ),
         ],
       ),
     );

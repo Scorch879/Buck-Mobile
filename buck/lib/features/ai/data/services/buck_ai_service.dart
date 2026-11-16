@@ -138,8 +138,12 @@ class BuckAiService {
     return [primaryUrl];
   }
 
-  /// Resolves a valid bearer token, refreshing the Supabase session if expired.
-  Future<String?> _resolveToken({String? overrideToken}) async {
+  /// Resolves a valid bearer token, refreshing the Supabase session if expired
+  /// or close to expiry.
+  Future<String?> _resolveToken({
+    String? overrideToken,
+    bool forceRefresh = false,
+  }) async {
     if (overrideToken != null && overrideToken.isNotEmpty) {
       return overrideToken;
     }
@@ -147,7 +151,11 @@ class BuckAiService {
     try {
       var session = SupabaseService.client.auth.currentSession;
       if (session == null) return null;
-      if (session.isExpired) {
+      final expiresAtSec = session.expiresAt;
+      final isNearExpiry = expiresAtSec != null &&
+          DateTime.fromMillisecondsSinceEpoch(expiresAtSec * 1000)
+              .isBefore(DateTime.now().add(const Duration(seconds: 60)));
+      if (forceRefresh || session.isExpired || isNearExpiry) {
         final refreshed = await SupabaseService.client.auth.refreshSession();
         session = refreshed.session ?? SupabaseService.client.auth.currentSession;
       }
@@ -224,16 +232,20 @@ class BuckAiService {
     required Future<http.Response> Function(Uri uri, Map<String, String> headers)
         send,
     required T Function(Map<String, dynamic> json) parse,
+    bool allowTokenRefresh = true,
     String timeoutMessage =
         'Buck AI request timed out. Please check your connection and try again.',
     String unreachableMessage =
         'Unable to reach Buck AI right now. Please try again shortly.',
   }) async {
     BuckAiException? lastError;
+    var activeToken = token;
+    var refreshedOnce = false;
 
-    for (final url in endpoints) {
+    for (var i = 0; i < endpoints.length; i++) {
+      final url = endpoints[i];
       final uri = Uri.parse(url);
-      final headers = _buildHeaders(token, uri: uri);
+      final headers = _buildHeaders(activeToken, uri: uri);
       try {
         final response = await send(uri, headers).timeout(_requestTimeout);
         if (response.statusCode == 200) {
@@ -246,6 +258,17 @@ class BuckAiService {
         }
         if (_isAuthFailureStatusOrBody(
             response.statusCode, response.bodyBytes)) {
+          if (allowTokenRefresh && !refreshedOnce) {
+            refreshedOnce = true;
+            final nextToken = await _resolveToken(forceRefresh: true);
+            if (nextToken != null &&
+                nextToken.isNotEmpty &&
+                nextToken != activeToken) {
+              activeToken = nextToken;
+              i--;
+              continue;
+            }
+          }
           throw BuckAiException.fromStatus(401);
         }
         lastError = BuckAiException.fromStatus(response.statusCode);
@@ -596,12 +619,15 @@ class BuckAiService {
             'question': _buildContextualQuestion(question, history),
           });
           BuckAiException? lastError;
+          var activeToken = effectiveToken;
+          var refreshedOnce = false;
 
-          for (final url in endpoints) {
+          for (var i = 0; i < endpoints.length; i++) {
+            final url = endpoints[i];
             if (isCancelled || controller.isClosed) return;
             final outcome = await _attemptStreamChatEndpoint(
               uri: Uri.parse(url),
-              token: effectiveToken,
+              token: activeToken,
               bodyJson: bodyJson,
               controller: controller,
               isCancelled: () => isCancelled || controller.isClosed,
@@ -622,6 +648,18 @@ class BuckAiService {
                   :final emittedAnyDelta,
                   :final retryable,
                 ):
+                if (authFailure && !emittedAnyDelta && !refreshedOnce && token == null) {
+                  refreshedOnce = true;
+                  final nextToken = await _resolveToken(forceRefresh: true);
+                  if (isCancelled || controller.isClosed) return;
+                  if (nextToken != null &&
+                      nextToken.isNotEmpty &&
+                      nextToken != activeToken) {
+                    activeToken = nextToken;
+                    i--;
+                    continue;
+                  }
+                }
                 if (authFailure || emittedAnyDelta || !retryable) {
                   if (!controller.isClosed) {
                     controller.addError(error);
@@ -830,6 +868,13 @@ class BuckAiService {
         ));
       },
       onDone: () {
+        if (!hasEmittedDelta) {
+          finish(const _ChatAttemptFailed(
+            BuckAiException('Buck AI returned an empty response. Retrying...'),
+            retryable: true,
+          ));
+          return;
+        }
         finish(const _ChatAttemptSucceeded());
       },
       cancelOnError: true,

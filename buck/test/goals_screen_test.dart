@@ -85,6 +85,14 @@ void main() {
     expect(find.text('Wedding Fund'), findsOneWidget);
     expect(find.text('of ₱150,000'), findsOneWidget);
     expect(find.byType(GoalCard), findsNWidgets(4));
+
+    // Verify AI Tip button is stacked vertically above the "On Track" pill on the right
+    final firstTitleRect = tester.getRect(find.text('Emergency Fund'));
+    final firstAiRect = tester.getRect(find.bySemanticsLabel('AI Goal Tip').first);
+    final firstStatusRect = tester.getRect(find.text('On Track').first);
+    expect(firstAiRect.left, greaterThan(firstTitleRect.right));
+    expect(firstAiRect.bottom, lessThanOrEqualTo(firstStatusRect.top));
+    expect(firstStatusRect.left, greaterThan(firstTitleRect.left));
   });
 
   testWidgets('MainShell navigates to dynamic GoalsScreen via footer icon', (tester) async {

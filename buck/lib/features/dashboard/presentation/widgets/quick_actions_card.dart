@@ -32,7 +32,12 @@ class QuickActionsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick Actions', style: AppTextStyles.sectionTitle),
+          Text(
+            'Quick Actions',
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: BuckPalette.of(context).cardTitle,
+            ),
+          ),
           const SizedBox(height: 14),
           Center(
             child: ConstrainedBox(
@@ -80,6 +85,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Semantics(
       button: true,
       label: widget.label,
@@ -101,7 +107,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
                 height: 52,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.actionIconBg,
+                  color: palette.actionIconBg,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _pressed
@@ -124,8 +130,8 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: _pressed
-                        ? AppColors.textAccent
-                        : AppColors.textSecondary,
+                        ? palette.textAccent
+                        : palette.textSecondary,
                   ),
                 ),
               ),

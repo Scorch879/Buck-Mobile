@@ -105,10 +105,6 @@ class _ProfileSidePanelOverlay extends StatefulWidget {
 
 class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
     with SingleTickerProviderStateMixin {
-  static const _panelCardBg = Color(0xFF392519);
-  static const _panelTileBg = Color(0xFF241710);
-  static const _panelBorder = Color(0xFF483126);
-
   bool _accountExpanded = false;
   bool _showMoreExpanded = false;
   bool _settingsExpanded = false;
@@ -214,11 +210,15 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final size = MediaQuery.sizeOf(context);
     final topInset = AppLayout.topSafeInset(context);
     final bottomInset = AppLayout.bottomSafeInset(context);
     final leftInset = AppLayout.leftSafeInset(context);
     final panelWidth = math.min(378.0, size.width * 0.88);
+    final borderColor = palette.subtleBorder;
+    final tileBg = palette.panelTileBg;
+    final cardBg = palette.panelCardBg;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -240,10 +240,10 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
               key: const Key('profile_side_panel'),
               width: panelWidth,
               height: double.infinity,
-          decoration: const BoxDecoration(
-            color: AppColors.navBarBg,
+          decoration: BoxDecoration(
+            color: palette.panelOverlayBg,
             border: Border(
-              right: BorderSide(color: AppColors.glassCardBorder, width: 1),
+              right: BorderSide(color: palette.glassCardBorder, width: 1),
             ),
           ),
           child: Stack(
@@ -295,19 +295,19 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: _panelTileBg,
+                      color: tileBg,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _panelBorder, width: 1),
+                      border: Border.all(color: borderColor, width: 1),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Quick Session & Preferences',
+                          'Preferences Shortcut',
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
+                            color: palette.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -316,13 +316,6 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                           label: 'Open Full Settings',
                           onTap: () =>
                               _openScreen(ProfilePanelDestination.settingsMenu),
-                        ),
-                        const SizedBox(height: 8),
-                        _ExpandedActionRow(
-                          iconPath: 'assets/icons/profile_panel_log_out.svg',
-                          label: 'Sign out of Buck',
-                          labelColor: SettingsColors.dangerTitle,
-                          onTap: _confirmAndSignOut,
                         ),
                       ],
                     ),
@@ -337,10 +330,10 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                 ),
                 const SizedBox(height: 20),
                 Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(color: _panelBorder, width: 1),
-                      bottom: BorderSide(color: _panelBorder, width: 1),
+                      top: BorderSide(color: borderColor, width: 1),
+                      bottom: BorderSide(color: borderColor, width: 1),
                     ),
                   ),
                   child: Column(
@@ -366,10 +359,10 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: _panelCardBg.withValues(alpha: 0.45),
+                                    color: cardBg.withValues(alpha: 0.7),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: _panelBorder,
+                                      color: borderColor,
                                       width: 1,
                                     ),
                                   ),
@@ -416,10 +409,10 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                               )
                             : const SizedBox.shrink(),
                       ),
-                      const Divider(
+                      Divider(
                         height: 1,
                         thickness: 1,
-                        color: _panelBorder,
+                        color: borderColor,
                       ),
                       _AccordionSectionRow(
                         key: const Key('panel_danger_zone_row'),
@@ -439,26 +432,15 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                         child: _dangerExpanded
                             ? Padding(
                                 padding: const EdgeInsets.only(bottom: 14),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    SettingsRedButton(
-                                      label: 'Sign out',
-                                      onTap: _confirmAndSignOut,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _ExpandedActionRow(
-                                      iconPath:
-                                          'assets/icons/profile_panel_triangle_alert.svg',
-                                      label:
-                                          'Account deletion & sensitive actions',
-                                      labelColor: SettingsColors.dangerTitle,
-                                      onTap: () => _openScreen(
-                                        ProfilePanelDestination.dangerZone,
-                                      ),
-                                    ),
-                                  ],
+                                child: _ExpandedActionRow(
+                                  iconPath:
+                                      'assets/icons/profile_panel_triangle_alert.svg',
+                                  label:
+                                      'Account deletion & sensitive actions',
+                                  labelColor: palette.dangerTitle,
+                                  onTap: () => _openScreen(
+                                    ProfilePanelDestination.dangerZone,
+                                  ),
                                 ),
                               )
                             : const SizedBox.shrink(),
@@ -474,13 +456,16 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                 left: 0,
                 right: 0,
                 height: math.max(24.0, topInset + 14.0),
-                child: const IgnorePointer(
+                child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [AppColors.navBarBg, Color(0x00100B09)],
+                        colors: [
+                          palette.panelOverlayBg,
+                          palette.panelOverlayBg.withValues(alpha: 0),
+                        ],
                       ),
                     ),
                   ),
@@ -491,13 +476,16 @@ class _ProfileSidePanelOverlayState extends State<_ProfileSidePanelOverlay>
                 left: 0,
                 right: 0,
                 height: math.max(24.0, bottomInset + 14.0),
-                child: const IgnorePointer(
+                child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [AppColors.navBarBg, Color(0x00100B09)],
+                        colors: [
+                          palette.panelOverlayBg,
+                          palette.panelOverlayBg.withValues(alpha: 0),
+                        ],
                       ),
                     ),
                   ),
@@ -532,22 +520,24 @@ class _ProfileAccountCard extends StatelessWidget {
     required this.onSignOutTap,
   });
 
-  static const _cardBg = Color(0xFF392519);
-  static const _borderColor = Color(0xFF483126);
-
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
+    final cardBg = palette.panelCardBg;
+    final borderColor = palette.subtleBorder;
+
     return Container(
       decoration: BoxDecoration(
-        color: _cardBg,
+        color: cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _borderColor, width: 1),
+        border: Border.all(color: borderColor, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
+            key: const Key('panel_profile_card_toggle'),
             onTap: onToggleExpand,
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -560,9 +550,9 @@ class _ProfileAccountCard extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: AppColors.inputBg,
+                          color: palette.inputBg,
                           shape: BoxShape.circle,
-                          border: Border.all(color: _borderColor, width: 1),
+                          border: Border.all(color: borderColor, width: 1),
                           image: bytes != null
                               ? DecorationImage(
                                   image: MemoryImage(bytes),
@@ -592,7 +582,7 @@ class _ProfileAccountCard extends StatelessWidget {
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             height: 20 / 16,
-                            color: AppColors.textPrimary,
+                            color: palette.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -604,7 +594,7 @@ class _ProfileAccountCard extends StatelessWidget {
                             fontSize: 13,
                             fontWeight: FontWeight.w400,
                             height: 18 / 13,
-                            color: AppColors.textSecondary,
+                            color: palette.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -616,8 +606,8 @@ class _ProfileAccountCard extends StatelessWidget {
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: const BoxDecoration(
-                      color: AppColors.inputBg,
+                    decoration: BoxDecoration(
+                      color: palette.inputBg,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -644,10 +634,10 @@ class _ProfileAccountCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Divider(
+                        Divider(
                           height: 1,
                           thickness: 1,
-                          color: _borderColor,
+                          color: borderColor,
                         ),
                         const SizedBox(height: 10),
                         _ExpandedActionRow(
@@ -657,6 +647,7 @@ class _ProfileAccountCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         SettingsRedButton(
+                          key: const Key('panel_profile_sign_out_button'),
                           label: 'Sign out',
                           onTap: onSignOutTap,
                         ),
@@ -668,8 +659,8 @@ class _ProfileAccountCard extends StatelessWidget {
           Container(
             height: 42,
             padding: const EdgeInsets.symmetric(horizontal: 18),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: _borderColor, width: 1)),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: borderColor, width: 1)),
             ),
             child: Row(
               children: [
@@ -686,7 +677,7 @@ class _ProfileAccountCard extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       height: 18 / 13,
-                      color: AppColors.textSecondary,
+                      color: palette.textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -714,6 +705,7 @@ class _ShortcutsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -723,7 +715,7 @@ class _ShortcutsSection extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             height: 20 / 14,
-            color: AppColors.textPrimary,
+            color: palette.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -777,6 +769,7 @@ class _ShortcutChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -787,8 +780,11 @@ class _ShortcutChip extends StatelessWidget {
             width: 64,
             height: 60,
             decoration: BoxDecoration(
-              color: const Color(0xFF392519),
+              color: palette.panelCardBg,
               borderRadius: BorderRadius.circular(14),
+              border: palette.isLight
+                  ? Border.all(color: palette.subtleBorder, width: 1)
+                  : null,
             ),
             alignment: Alignment.center,
             child: SvgPicture.asset(iconPath, width: 26, height: 26),
@@ -801,7 +797,7 @@ class _ShortcutChip extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w500,
               height: 18 / 12,
-              color: AppColors.textSecondary,
+              color: palette.textSecondary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -891,8 +887,9 @@ class _NavigationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Material(
-      color: const Color(0xFF241710),
+      color: palette.panelTileBg,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -902,7 +899,7 @@ class _NavigationTile extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF483126), width: 1),
+            border: Border.all(color: palette.subtleBorder, width: 1),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -916,7 +913,7 @@ class _NavigationTile extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   height: 20 / 14,
-                  color: AppColors.textPrimary,
+                  color: palette.textPrimary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -937,8 +934,9 @@ class _SeeMoreButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Material(
-      color: AppColors.inputBg,
+      color: palette.inputBg,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -952,7 +950,7 @@ class _SeeMoreButton extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.w700,
               height: 24 / 18,
-              color: AppColors.textPrimary,
+              color: palette.textPrimary,
             ),
           ),
         ),
@@ -977,6 +975,7 @@ class _AccordionSectionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return InkWell(
       onTap: onTap,
       child: SizedBox(
@@ -994,7 +993,7 @@ class _AccordionSectionRow extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     height: 20 / 16,
-                    color: AppColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
               ),
@@ -1037,8 +1036,9 @@ class _ExpandedActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Material(
-      color: AppColors.navBarBg,
+      color: palette.navBarBg,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -1055,14 +1055,14 @@ class _ExpandedActionRow extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: labelColor ?? AppColors.textPrimary,
+                    color: labelColor ?? palette.textPrimary,
                   ),
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 18,
-                color: AppColors.textSecondary,
+                color: palette.textSecondary,
               ),
             ],
           ),

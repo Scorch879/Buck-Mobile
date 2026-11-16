@@ -31,6 +31,7 @@ class GoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final isCompact = MediaQuery.sizeOf(context).width < 380;
 
     return BuckGlassCard(
@@ -43,9 +44,9 @@ class GoalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Header Row: Icon + Title/Target + Status Badge + AI Tip
+          // 1. Header Row: Icon + Title/Target + Right-aligned stacked AI Tip & Status Badge
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Icon Avatar
               Container(
@@ -59,7 +60,7 @@ class GoalCard extends StatelessWidget {
                 child: Icon(goal.icon, size: 20, color: goal.themeColor),
               ),
               const SizedBox(width: 10),
-              // Title & Target Date
+              // Title & Target Date (fuller horizontal width without pill squeezing it)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,9 +70,9 @@ class GoalCard extends StatelessWidget {
                       style: GoogleFonts.manrope(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFFF7EE),
+                        color: palette.textPrimary,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
@@ -80,47 +81,50 @@ class GoalCard extends StatelessWidget {
                       style: GoogleFonts.manrope(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 4),
-              // AI Tip Button
-              Semantics(
-                button: true,
-                label: 'AI Goal Tip',
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => showAiGoalTipDialog(
-                    context: context,
-                    goalName: goal.title,
-                    targetAmount: goal.targetAmount,
-                    goalId: goal.id,
-                  ),
-                  child: Container(
-                    padding: EdgeInsets.all(isCompact ? 5 : 6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryOrange.withValues(alpha: 0.15),
-                      border: Border.all(
-                        color: AppColors.primaryOrange.withValues(alpha: 0.4),
-                        width: 1,
+              const SizedBox(width: 10),
+              // Right-hand stacked AI button + status pillbox underneath
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    button: true,
+                    label: 'AI Goal Tip',
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => showAiGoalTipDialog(
+                        context: context,
+                        goalName: goal.title,
+                        targetAmount: goal.targetAmount,
+                        goalId: goal.id,
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.all(isCompact ? 5 : 6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryOrange.withValues(alpha: 0.15),
+                          border: Border.all(
+                            color: AppColors.primaryOrange.withValues(alpha: 0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          size: isCompact ? 12 : 14,
+                          color: AppColors.amberAccent,
+                        ),
                       ),
                     ),
-                    child: Icon(
-                      Icons.auto_awesome,
-                      size: isCompact ? 12 : 14,
-                      color: AppColors.amberAccent,
-                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              // Status Badge
-              Flexible(
-                child: _statusBadge(),
+                  const SizedBox(height: 6),
+                  _statusBadge(),
+                ],
               ),
             ],
           ),
@@ -139,7 +143,7 @@ class GoalCard extends StatelessWidget {
                   style: GoogleFonts.manrope(
                     fontSize: isCompact ? 21 : 24,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: palette.metricValue,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -149,7 +153,7 @@ class GoalCard extends StatelessWidget {
                   style: GoogleFonts.manrope(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFFC6B5AB),
+                    color: palette.textSecondary,
                   ),
                 ),
               ],
@@ -163,7 +167,7 @@ class GoalCard extends StatelessWidget {
             child: Container(
               height: 8,
               width: double.infinity,
-              color: const Color(0xFF4A2D22),
+              color: palette.trackBrown,
               alignment: Alignment.centerLeft,
               child: FractionallySizedBox(
                 widthFactor: goal.progress,
@@ -215,7 +219,7 @@ class GoalCard extends StatelessWidget {
                       style: GoogleFonts.manrope(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                     ),
                   ],
@@ -231,8 +235,10 @@ class GoalCard extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF1D110C),
+                  backgroundColor:
+                      palette.isLight ? AppColors.textDark : Colors.white,
+                  foregroundColor:
+                      palette.isLight ? Colors.white : const Color(0xFF1D110C),
                   elevation: 0,
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
@@ -245,7 +251,9 @@ class GoalCard extends StatelessWidget {
                   style: GoogleFonts.manrope(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1D110C),
+                    color: palette.isLight
+                        ? Colors.white
+                        : const Color(0xFF1D110C),
                   ),
                 ),
               ),

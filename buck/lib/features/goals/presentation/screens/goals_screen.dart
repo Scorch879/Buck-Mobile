@@ -147,7 +147,7 @@ class GoalsScreen extends StatelessWidget {
                                   style: GoogleFonts.manrope(
                                     fontSize: isCompact ? 20 : 22,
                                     fontWeight: FontWeight.w800,
-                                    color: const Color(0xFFFFF7EE),
+                                    color: BuckPalette.of(context).textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -156,7 +156,8 @@ class GoalsScreen extends StatelessWidget {
                                   style: GoogleFonts.manrope(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
-                                    color: const Color(0xFFC6B5AB),
+                                    color:
+                                        BuckPalette.of(context).textSecondary,
                                   ),
                                 ),
                               ],

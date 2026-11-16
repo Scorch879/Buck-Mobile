@@ -32,9 +32,20 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble>
   Animation<Offset>? _snapAnimation;
 
   Offset? _position;
+  Offset? _dragOrigin;
+  double _dragDistance = 0.0;
   bool _pressed = false;
   bool _isDragging = false;
   bool _snappedLeft = false;
+
+  void _openChatSheet() {
+    final handler = widget.onTap;
+    if (handler != null) {
+      handler();
+      return;
+    }
+    showAiChatSheet(context);
+  }
 
   @override
   void initState() {
@@ -162,7 +173,8 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble>
 
         if (!hasArea) {
           return GestureDetector(
-            onTap: widget.onTap ?? () => showAiChatSheet(context),
+            behavior: HitTestBehavior.opaque,
+            onTap: _openChatSheet,
             child: _buildBubble(),
           );
         }
@@ -192,12 +204,15 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble>
               left: effectivePos.dx,
               top: effectivePos.dy,
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTapDown: (_) => setState(() => _pressed = true),
                 onTapCancel: () => setState(() => _pressed = false),
                 onTapUp: (_) => setState(() => _pressed = false),
-                onTap: widget.onTap ?? () => showAiChatSheet(context),
-                onPanStart: (_) {
+                onTap: _openChatSheet,
+                onPanStart: (details) {
                   _snapController.stop();
+                  _dragOrigin = details.globalPosition;
+                  _dragDistance = 0.0;
                   setState(() {
                     _pressed = false;
                     _isDragging = true;
@@ -205,6 +220,10 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble>
                   });
                 },
                 onPanUpdate: (details) {
+                  final origin = _dragOrigin;
+                  if (origin != null) {
+                    _dragDistance = (details.globalPosition - origin).distance;
+                  }
                   setState(() {
                     final next = (_position ?? effectivePos) + details.delta;
                     _position = Offset(
@@ -214,13 +233,21 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble>
                   });
                 },
                 onPanEnd: (details) {
+                  final moved = _dragDistance;
+                  _dragOrigin = null;
+                  _dragDistance = 0.0;
                   setState(() => _isDragging = false);
                   _snapToClosestEdge(
                     bounds,
                     velocityDx: details.velocity.pixelsPerSecond.dx,
                   );
+                  if (moved < 14.0) {
+                    _openChatSheet();
+                  }
                 },
                 onPanCancel: () {
+                  _dragOrigin = null;
+                  _dragDistance = 0.0;
                   if (_isDragging) {
                     setState(() => _isDragging = false);
                     _snapToClosestEdge(bounds);

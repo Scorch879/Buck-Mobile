@@ -225,7 +225,7 @@ void main() {
   });
 
   testWidgets(
-    'scrolling condenses header and lowers footer position without shrinking it',
+    'scrolling keeps header pinned and footer stationary without vertical jitter',
     (tester) async {
       tester.view.physicalSize = const Size(440, 520);
       tester.view.devicePixelRatio = 1;
@@ -250,44 +250,27 @@ void main() {
 
       final initialBottom = footerBottom();
       final initialFooterSize = tester.getSize(find.byType(BuckFooterNav));
+      final initialHeaderRect = tester.getRect(find.byType(BuckHeader));
 
-      expect(
-        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
-        0.0,
-      );
+      // Raised footer clearance (>= 18px) and stationary header/footer across scroll.
+      expect(initialBottom, greaterThanOrEqualTo(18.0));
 
       final scrollable = find.byType(ListView).first;
 
-      // Scroll down -> condenses header and lowers footer position (same size).
       await tester.drag(scrollable, const Offset(0, -180));
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
-        1.0,
-      );
-      expect(footerBottom(), lessThan(initialBottom));
+      expect(tester.getRect(find.byType(BuckHeader)), initialHeaderRect);
+      expect(footerBottom(), initialBottom);
       expect(tester.getSize(find.byType(BuckFooterNav)), initialFooterSize);
 
-      // Scroll back up -> restores header and footer position.
       await tester.drag(scrollable, const Offset(0, 180));
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
-        0.0,
-      );
+      expect(tester.getRect(find.byType(BuckHeader)), initialHeaderRect);
       expect(footerBottom(), initialBottom);
-
-      // Condense again, then switch tab -> restores chrome cleanly.
-      await tester.drag(scrollable, const Offset(0, -180));
-      await tester.pumpAndSettle();
-      expect(footerBottom(), lessThan(initialBottom));
 
       await tester.tap(find.bySemanticsLabel('Expenses'));
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<BuckHeader>(find.byType(BuckHeader)).collapseProgress,
-        0.0,
-      );
+      expect(tester.getRect(find.byType(BuckHeader)), initialHeaderRect);
       expect(footerBottom(), initialBottom);
     },
   );

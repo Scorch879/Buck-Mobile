@@ -94,6 +94,7 @@ class _CompactCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 4,
@@ -101,12 +102,19 @@ class _CompactCardHeader extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(title, maxLines: 1, style: AppTextStyles.cardTitle),
+          child: Text(
+            title,
+            maxLines: 1,
+            style: AppTextStyles.cardTitle.copyWith(color: palette.cardTitle),
+          ),
         ),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(amount, style: AppTextStyles.amountLarge),
+          child: Text(
+            amount,
+            style: AppTextStyles.amountLarge.copyWith(color: palette.textPrimary),
+          ),
         ),
         if (change != null) BuckTrendBadge(text: change!),
       ],
@@ -158,7 +166,7 @@ class WalletCompactCard extends StatelessWidget {
                   child: Container(
                     height: 12,
                     decoration: BoxDecoration(
-                      color: AppColors.trackBrown,
+                      color: BuckPalette.of(context).trackBrown,
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
@@ -220,7 +228,9 @@ class WalletCompactCard extends StatelessWidget {
                 child: Text(
                   'Last synced: $lastSynced',
                   maxLines: 1,
-                  style: AppTextStyles.caption,
+                  style: AppTextStyles.caption.copyWith(
+                    color: BuckPalette.of(context).textSecondary,
+                  ),
                 ),
               ),
               _TapTarget(
