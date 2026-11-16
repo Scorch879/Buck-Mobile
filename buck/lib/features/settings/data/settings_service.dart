@@ -132,7 +132,47 @@ class SettingsService {
     });
   }
 
-  Future<void> requestAccountDeletion() async {
+  /// Returns whether the currently signed-in account uses a password that must
+  /// be re-entered before requesting deletion.
+  Future<bool> accountRequiresPassword() async {
+    if (!SupabaseService.isInitialized) return true;
+    final client = SupabaseService.client;
+    final user = client.auth.currentUser;
+    if (user == null) return true;
+
+    try {
+      final res = await client.rpc(
+        'get_auth_user_capabilities',
+        params: {'p_user_id': user.id},
+      );
+      if (res is List && res.isNotEmpty) {
+        final row = res.first;
+        if (row is Map && row['has_password'] is bool) {
+          return row['has_password'] as bool;
+        }
+      } else if (res is Map && res['has_password'] is bool) {
+        return res['has_password'] as bool;
+      }
+    } catch (_) {
+      // Fall back to identity metadata inspection when capability RPC fails.
+    }
+
+    final identities = user.identities ?? const [];
+    if (identities.isNotEmpty) {
+      return identities.any((i) => i.provider.toLowerCase() == 'email');
+    }
+    final provider =
+        user.appMetadata['provider']?.toString().toLowerCase() ?? 'email';
+    return provider != 'google';
+  }
+
+  Future<void> requestAccountDeletion({
+    String confirmation = 'DELETE',
+    String? password,
+  }) async {
+    if (confirmation.trim() != 'DELETE') {
+      throw ArgumentError('Type DELETE to confirm account deletion.');
+    }
     if (!SupabaseService.isInitialized) {
       throw StateError(
         'Unable to reach account deletion service right now. Please try again.',
@@ -145,11 +185,27 @@ class SettingsService {
       throw const AuthException('Not signed in');
     }
 
-    final response = await client.functions.invoke('request-account-deletion');
-    if (response.status < 200 || response.status >= 300) {
-      throw StateError(
-        'Account deletion request failed (HTTP ${response.status}).',
+    final requiresPassword = await accountRequiresPassword();
+    if (requiresPassword && (password == null || password.isEmpty)) {
+      throw const AuthException(
+        'Please enter your password to confirm account deletion.',
       );
+    }
+
+    try {
+      await client.rpc(
+        'request_account_deletion',
+        params: {
+          'p_confirmation': confirmation.trim(),
+          if (password != null && password.isNotEmpty) 'p_password': password,
+        },
+      );
+    } on PostgrestException catch (e) {
+      final msg = e.message.trim();
+      if (msg.isNotEmpty) {
+        throw AuthException(msg);
+      }
+      throw StateError('Account deletion request failed.');
     }
   }
 

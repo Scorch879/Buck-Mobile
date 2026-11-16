@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_layout.dart';
 import '../../../finance/domain/finance_snapshot.dart';
 import '../../../finance/presentation/finance_controller.dart';
+import '../../../onboarding/presentation/buck_onboarding_targets.dart';
 import '../widgets/create_wallet_dialog.dart';
 import '../widgets/manage_income_card.dart';
 import '../widgets/manage_wallets_card.dart';
@@ -24,6 +25,7 @@ class WalletScreen extends StatefulWidget {
   final VoidCallback? onScanIncome;
   final ValueChanged<String>? onMessage;
   final EdgeInsets bottomInset;
+  final BuckOnboardingTargets? onboardingTargets;
 
   const WalletScreen({
     super.key,
@@ -34,6 +36,7 @@ class WalletScreen extends StatefulWidget {
     this.onScanIncome,
     this.onMessage,
     this.bottomInset = EdgeInsets.zero,
+    this.onboardingTargets,
   });
 
   @override
@@ -124,6 +127,10 @@ class _WalletScreenState extends State<WalletScreen> {
                             activeWalletId: s.activeWallet?.id,
                             onSelectActive: _handleSelectActive,
                             onNewWallet: _handleNewWallet,
+                            cardHighlightKey:
+                                widget.onboardingTargets?.manageWalletsCardKey,
+                            newWalletButtonKey:
+                                widget.onboardingTargets?.newWalletButtonKey,
                           )
                         : ManageIncomeCard(
                             key: const ValueKey('manage_income'),

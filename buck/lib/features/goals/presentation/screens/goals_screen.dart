@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_layout.dart';
+import '../../../onboarding/presentation/buck_onboarding_targets.dart';
 import '../allocate_funds_dialog.dart';
 import '../create_goal_dialog.dart';
 import '../../data/goal_model.dart';
@@ -17,6 +18,7 @@ class GoalsScreen extends StatelessWidget {
   final String? activeWalletId;
   final double? activeWalletBalance;
   final EdgeInsets bottomInset;
+  final BuckOnboardingTargets? onboardingTargets;
 
   const GoalsScreen({
     super.key,
@@ -26,6 +28,7 @@ class GoalsScreen extends StatelessWidget {
     this.activeWalletId,
     this.activeWalletBalance,
     this.bottomInset = EdgeInsets.zero,
+    this.onboardingTargets,
   });
 
   Future<void> _handleCreateGoal(BuildContext context) async {
@@ -133,115 +136,148 @@ class GoalsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. Header: Title + Subtitle & "+ Create Goal" Button
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                      Column(
+                        key: onboardingTargets?.goalsHeroSectionKey,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Financial Goals',
-                                  style: GoogleFonts.manrope(
-                                    fontSize: isCompact ? 20 : 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: BuckPalette.of(context).textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Track your savings targets',
-                                  style: GoogleFonts.manrope(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        BuckPalette.of(context).textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // "+ Create Goal" button
-                          Container(
-                            height: 32,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFFE57136),
-                                  Color(0xFFF48648),
-                                  Color(0xFFFF8D43),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x33FF6A13),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () => _handleCreateGoal(context),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                                  child: Center(
-                                    child: Text(
-                                      '+ Create Goal',
-                                      style: GoogleFonts.inter(
+                          // 1. Header: Title + Subtitle & "+ Create Goal" Button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Financial Goals',
+                                      style: GoogleFonts.manrope(
+                                        fontSize: isCompact ? 20 : 22,
+                                        fontWeight: FontWeight.w800,
+                                        color:
+                                            BuckPalette.of(context).textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Track your savings targets',
+                                      style: GoogleFonts.manrope(
                                         fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1D110C),
+                                        fontWeight: FontWeight.w500,
+                                        color: BuckPalette.of(context)
+                                            .textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // "+ Create Goal" button
+                              Container(
+                                key: onboardingTargets?.createGoalButtonKey,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFE57136),
+                                      Color(0xFFF48648),
+                                      Color(0xFFFF8D43),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x33FF6A13),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(8),
+                                    onTap: () => _handleCreateGoal(context),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '+ Create Goal',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF1D110C),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
+                          const SizedBox(height: 16),
+
+                          // First Goal Card or Loading / Empty State included in hero spotlight
+                          if (controller.isLoading && goals.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(40),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primaryOrange,
+                                ),
+                              ),
+                            )
+                          else if (goals.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(28),
+                              decoration: BoxDecoration(
+                                color: BuckPalette.of(context).glassCardBg,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color:
+                                      BuckPalette.of(context).glassCardBorder,
+                                  width: 1,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'No goals yet. Tap "+ Create Goal" to begin tracking savings!',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: BuckPalette.of(context).textSecondary,
+                                ),
+                              ),
+                            )
+                          else
+                            GoalCard(
+                              goal: goals.first,
+                              allocateButtonKey:
+                                  goals.first.status != GoalStatus.completed
+                                      ? onboardingTargets?.allocateFundsButtonKey
+                                      : null,
+                              onAllocate: (g) =>
+                                  _handleAllocateFunds(context, g),
+                            ),
                         ],
                       ),
-                      const SizedBox(height: 16),
 
-                      // 2. Dynamic Goal Cards
-                      if (controller.isLoading && goals.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primaryOrange,
-                            ),
-                          ),
-                        )
-                      else if (goals.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'No goals yet. Tap "+ Create Goal" to begin tracking savings!',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        )
-                      else
-                        for (final goal in goals) ...[
+                      // Remaining Dynamic Goal Cards
+                      if (goals.length > 1) ...[
+                        const SizedBox(height: 14),
+                        for (var i = 1; i < goals.length; i++) ...[
                           GoalCard(
-                            goal: goal,
+                            goal: goals[i],
                             onAllocate: (g) => _handleAllocateFunds(context, g),
                           ),
                           const SizedBox(height: 14),
                         ],
+                      ],
                     ],
                   ),
                 ),

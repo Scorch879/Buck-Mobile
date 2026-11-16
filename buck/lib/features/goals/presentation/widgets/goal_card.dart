@@ -9,11 +9,13 @@ import '../../data/goal_model.dart';
 class GoalCard extends StatelessWidget {
   final GoalItem goal;
   final ValueChanged<GoalItem> onAllocate;
+  final GlobalKey? allocateButtonKey;
 
   const GoalCard({
     super.key,
     required this.goal,
     required this.onAllocate,
+    this.allocateButtonKey,
   });
 
   String _formatCurrency(double amount) {
@@ -231,6 +233,7 @@ class GoalCard extends StatelessWidget {
           if (goal.status != GoalStatus.completed) ...[
             const SizedBox(height: 14),
             SizedBox(
+              key: allocateButtonKey,
               height: 36,
               width: double.infinity,
               child: ElevatedButton(

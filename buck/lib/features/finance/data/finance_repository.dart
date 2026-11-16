@@ -51,6 +51,12 @@ abstract class FinanceDataSource {
 
   Future<void> setActiveWallet(String walletId);
 
+  Future<void> transferFunds({
+    required String sourceWalletId,
+    required String targetWalletId,
+    required double amount,
+  });
+
   /// Calls [onChange] whenever the user's data changes.
   /// Returns a function that stops listening.
   void Function() watch(void Function() onChange);
@@ -263,6 +269,23 @@ class FinanceRepository implements FinanceDataSource {
     await _client.from('profiles').update({
       'active_wallet_id': walletId,
     }).eq('id', userId);
+  }
+
+  /// Atomically moves [amount] from [sourceWalletId] to [targetWalletId] in Postgres.
+  @override
+  Future<void> transferFunds({
+    required String sourceWalletId,
+    required String targetWalletId,
+    required double amount,
+  }) async {
+    await _client.rpc(
+      'transfer_funds_atomic',
+      params: {
+        'p_source_wallet_id': sourceWalletId,
+        'p_target_wallet_id': targetWalletId,
+        'p_amount': amount,
+      },
+    );
   }
 
   /// Subscribes to Realtime changes on the user's finance tables.

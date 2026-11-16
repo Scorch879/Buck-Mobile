@@ -11,8 +11,17 @@ enum QuickAction { scanReceipt, addExpense, addIncome, transfer }
 /// Figma "Quick Action Bar" (2242:287).
 class QuickActionsCard extends StatelessWidget {
   final ValueChanged<QuickAction> onAction;
+  final GlobalKey? cardHighlightKey;
+  final GlobalKey? addExpenseHighlightKey;
+  final GlobalKey? addIncomeHighlightKey;
 
-  const QuickActionsCard({super.key, required this.onAction});
+  const QuickActionsCard({
+    super.key,
+    required this.onAction,
+    this.cardHighlightKey,
+    this.addExpenseHighlightKey,
+    this.addIncomeHighlightKey,
+  });
 
   static const _actions = [
     (QuickAction.scanReceipt, 'assets/icons/scan.svg', 'Scan Receipt'),
@@ -21,10 +30,17 @@ class QuickActionsCard extends StatelessWidget {
     (QuickAction.transfer, 'assets/icons/arrow_right_left.svg', 'Transfer'),
   ];
 
+  GlobalKey? _keyForAction(QuickAction action) => switch (action) {
+        QuickAction.addExpense => addExpenseHighlightKey,
+        QuickAction.addIncome => addIncomeHighlightKey,
+        _ => null,
+      };
+
   @override
   Widget build(BuildContext context) {
     final isCompact = MediaQuery.sizeOf(context).width < 380;
     return BuckGlassCard(
+      key: cardHighlightKey,
       padding: EdgeInsets.symmetric(
         horizontal: isCompact ? 14 : 20,
         vertical: isCompact ? 16 : 20,
@@ -50,6 +66,7 @@ class QuickActionsCard extends StatelessWidget {
                   for (final (action, icon, label) in _actions)
                     Expanded(
                       child: _QuickActionButton(
+                        iconKey: _keyForAction(action),
                         icon: icon,
                         label: label,
                         onTap: () => onAction(action),
@@ -66,11 +83,13 @@ class QuickActionsCard extends StatelessWidget {
 }
 
 class _QuickActionButton extends StatefulWidget {
+  final GlobalKey? iconKey;
   final String icon;
   final String label;
   final VoidCallback onTap;
 
   const _QuickActionButton({
+    this.iconKey,
     required this.icon,
     required this.label,
     required this.onTap,
@@ -103,6 +122,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
           child: Column(
             children: [
               Container(
+                key: widget.iconKey,
                 width: 52,
                 height: 52,
                 alignment: Alignment.center,

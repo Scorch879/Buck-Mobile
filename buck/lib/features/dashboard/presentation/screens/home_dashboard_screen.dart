@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_layout.dart';
 import '../../../../core/utils/currency.dart';
 import '../../../finance/domain/finance_snapshot.dart';
+import '../../../onboarding/presentation/buck_onboarding_targets.dart';
 import '../widgets/ai_advisory_banner.dart';
 import '../widgets/financial_overview_cards.dart';
 import '../widgets/quick_actions_card.dart';
@@ -17,6 +18,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final VoidCallback? onOpenReport;
   final EdgeInsets bottomInset;
+  final BuckOnboardingTargets? onboardingTargets;
 
   const HomeDashboardScreen({
     super.key,
@@ -25,6 +27,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onRefresh,
     this.onOpenReport,
     this.bottomInset = EdgeInsets.zero,
+    this.onboardingTargets,
   });
 
   /// Wallet bar colours from Figma, cycled per wallet.
@@ -66,7 +69,14 @@ class HomeDashboardScreen extends StatelessWidget {
               child: Column(
                 spacing: 15,
                 children: [
-                  QuickActionsCard(onAction: onQuickAction),
+                  QuickActionsCard(
+                    onAction: onQuickAction,
+                    cardHighlightKey: onboardingTargets?.quickActionsCardKey,
+                    addExpenseHighlightKey:
+                        onboardingTargets?.addExpenseActionKey,
+                    addIncomeHighlightKey:
+                        onboardingTargets?.addIncomeActionKey,
+                  ),
                   FinancialOverviewRow(
                     walletBalance: formatPeso(s.walletBalance),
                     walletChange: s.walletRemainingPercent == null

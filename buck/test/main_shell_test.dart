@@ -274,5 +274,92 @@ void main() {
       expect(footerBottom(), initialBottom);
     },
   );
+
+  testWidgets(
+    'Transfer quick action prompts for 2+ wallets and flows into Create Wallet',
+    (tester) async {
+      final fake = source(); // only 1 wallet ('Cash')
+      await pumpShell(tester, fake);
+
+      await tester.tap(find.bySemanticsLabel('Transfer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Need 2 or More Wallets'), findsOneWidget);
+      expect(find.textContaining('Add at least 1 more wallet'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('transfer_create_wallet_cta')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create New Wallet'), findsOneWidget);
+      final fields = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextFormField),
+      );
+      await tester.enterText(fields.at(0), 'Savings');
+      await tester.enterText(fields.at(1), '1000');
+      await tester.tap(find.text('Create Wallet'));
+      await tester.pumpAndSettle();
+
+      // Creating the 2nd wallet automatically opens the Transfer Funds dialog.
+      expect(find.text('Transfer Funds'), findsNWidgets(2)); // title + CTA
+      expect(fake.data.wallets.length, 2);
+    },
+  );
+
+  testWidgets(
+    'Transfer quick action transfers funds between 2 wallets with balance validation',
+    (tester) async {
+      final fake = FakeFinanceSource(
+        FinanceData(
+          profileName: 'Jo',
+          activeWalletId: 'w1',
+          wallets: const [
+            Wallet(id: 'w1', name: 'Cash', balance: 5000),
+            Wallet(id: 'w2', name: 'Savings', balance: 1500),
+          ],
+          expenses: const [],
+          incomes: const [],
+          advisories: const [],
+        ),
+      );
+      await pumpShell(tester, fake);
+
+      await tester.tap(find.bySemanticsLabel('Transfer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cash'), findsWidgets);
+      expect(find.text('Savings'), findsWidgets);
+
+      // Over-balance check
+      await tester.enterText(
+        find.byKey(const Key('transfer_amount_input')),
+        '9999',
+      );
+      await tester.tap(find.byKey(const Key('transfer_submit_button')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Insufficient balance in Cash'), findsOneWidget);
+      expect(fake.transferredFunds, isEmpty);
+
+      // Valid transfer
+      await tester.enterText(
+        find.byKey(const Key('transfer_amount_input')),
+        '750',
+      );
+      await tester.tap(find.byKey(const Key('transfer_submit_button')));
+      await tester.pumpAndSettle();
+
+      expect(fake.transferredFunds, [
+        {'sourceWalletId': 'w1', 'targetWalletId': 'w2', 'amount': 750.0},
+      ]);
+      expect(
+        fake.data.wallets.firstWhere((w) => w.id == 'w1').balance,
+        4250.0,
+      );
+      expect(
+        fake.data.wallets.firstWhere((w) => w.id == 'w2').balance,
+        2250.0,
+      );
+    },
+  );
 }
 

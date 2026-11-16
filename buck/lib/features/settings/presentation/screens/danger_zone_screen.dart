@@ -11,11 +11,15 @@ import '../widgets/settings_dialogs.dart';
 class DangerZoneScreen extends StatefulWidget {
   final Future<void> Function() onDeletionConfirmed;
   final Future<void> Function()? onSubmitDeletion;
+  final Future<void> Function(String password)? onSubmitDeletionWithPassword;
+  final bool? requirePasswordOverride;
 
   const DangerZoneScreen({
     super.key,
     required this.onDeletionConfirmed,
     this.onSubmitDeletion,
+    this.onSubmitDeletionWithPassword,
+    this.requirePasswordOverride,
   });
 
   @override
@@ -25,6 +29,7 @@ class DangerZoneScreen extends StatefulWidget {
 class _DangerZoneScreenState extends State<DangerZoneScreen> {
   final _confirmController = TextEditingController();
   bool _submitting = false;
+  bool _requirePassword = true;
 
   bool get _canRequestDeletion => _confirmController.text.trim() == 'DELETE';
 
@@ -32,6 +37,17 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
   void initState() {
     super.initState();
     _confirmController.addListener(() => setState(() {}));
+    if (widget.requirePasswordOverride != null) {
+      _requirePassword = widget.requirePasswordOverride!;
+    } else {
+      _loadPasswordRequirement();
+    }
+  }
+
+  Future<void> _loadPasswordRequirement() async {
+    final requires = await SettingsService.instance.accountRequiresPassword();
+    if (!mounted) return;
+    setState(() => _requirePassword = requires);
   }
 
   @override
@@ -41,14 +57,25 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
   }
 
   Future<void> _requestDeletion() async {
-    final confirmed = await showDeletionRequestConfirmationDialog(context);
-    if (confirmed != true || !mounted) return;
+    if (!_canRequestDeletion || _submitting) return;
+    final password = await showDeletionRequestConfirmationDialog(
+      context,
+      requirePassword: _requirePassword,
+    );
+    if (password == null || !mounted) return;
 
     setState(() => _submitting = true);
     try {
-      final submit =
-          widget.onSubmitDeletion ?? SettingsService.instance.requestAccountDeletion;
-      await submit();
+      if (widget.onSubmitDeletionWithPassword != null) {
+        await widget.onSubmitDeletionWithPassword!(password);
+      } else if (widget.onSubmitDeletion != null) {
+        await widget.onSubmitDeletion!();
+      } else {
+        await SettingsService.instance.requestAccountDeletion(
+          confirmation: _confirmController.text.trim(),
+          password: password,
+        );
+      }
       await widget.onDeletionConfirmed();
     } catch (e) {
       if (!mounted) return;
@@ -96,7 +123,7 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Buck sends a confirmation email first. After confirmation, your account enters a 10-day recovery window before the scheduled job permanently erases it.',
+                  'Confirm with DELETE and your password to schedule account deletion. Your account enters a 10-day recovery window before permanent removal.',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
@@ -152,6 +179,8 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                   key: const Key('danger_zone_delete_input'),
                   controller: _confirmController,
                   textCapitalization: TextCapitalization.characters,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _requestDeletion(),
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
@@ -185,7 +214,20 @@ class _DangerZoneScreenState extends State<DangerZoneScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 8),
+                Text(
+                  _canRequestDeletion
+                      ? 'Tap Request deletion to open the password confirmation card.'
+                      : 'Type DELETE above to open the password confirmation card.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _canRequestDeletion
+                        ? palette.dangerTitle
+                        : palette.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 14),
                 SettingsRedButton(
                   key: const Key('danger_zone_request_button'),
                   label: 'Request deletion',

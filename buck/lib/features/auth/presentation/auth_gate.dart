@@ -54,7 +54,7 @@ class _AuthGateState extends State<AuthGate> {
             final session =
                 snapshot.data?.session ?? _authService.currentSession;
             if (session == null) return const SignInScreen();
-            return const MainShell();
+            return MainShell(key: ValueKey(session.user.id));
           },
         );
       },

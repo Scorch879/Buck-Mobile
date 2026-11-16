@@ -6,6 +6,7 @@ class FakeFinanceSource implements FinanceDataSource {
   FinanceData data;
   final List<Map<String, Object>> addedIncomes = [];
   final List<Map<String, Object>> addedExpenses = [];
+  final List<Map<String, Object>> transferredFunds = [];
 
   FakeFinanceSource(this.data);
 
@@ -114,6 +115,45 @@ class FakeFinanceSource implements FinanceDataSource {
       profileName: data.profileName,
       activeWalletId: walletId,
       wallets: data.wallets,
+      expenses: data.expenses,
+      incomes: data.incomes,
+      advisories: data.advisories,
+    );
+  }
+
+  @override
+  Future<void> transferFunds({
+    required String sourceWalletId,
+    required String targetWalletId,
+    required double amount,
+  }) async {
+    if (sourceWalletId == targetWalletId) {
+      throw 'Source and target wallets must be different.';
+    }
+    if (amount <= 0) {
+      throw 'Transfer amount must be greater than zero.';
+    }
+    final source = data.wallets.firstWhere((w) => w.id == sourceWalletId);
+    if (source.balance < amount) {
+      throw 'Insufficient funds in source wallet.';
+    }
+    transferredFunds.add({
+      'sourceWalletId': sourceWalletId,
+      'targetWalletId': targetWalletId,
+      'amount': amount,
+    });
+    data = FinanceData(
+      profileName: data.profileName,
+      activeWalletId: data.activeWalletId,
+      wallets: [
+        for (final w in data.wallets)
+          if (w.id == sourceWalletId)
+            Wallet(id: w.id, name: w.name, balance: w.balance - amount)
+          else if (w.id == targetWalletId)
+            Wallet(id: w.id, name: w.name, balance: w.balance + amount)
+          else
+            w,
+      ],
       expenses: data.expenses,
       incomes: data.incomes,
       advisories: data.advisories,

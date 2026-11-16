@@ -261,7 +261,8 @@ void main() {
     );
   });
 
-  testWidgets('DangerZoneScreen gates Request deletion on typing DELETE and confirms dialog',
+  testWidgets(
+      'DangerZoneScreen opens password confirmation card only when DELETE is typed and requires password',
       (tester) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1.0;
@@ -269,11 +270,15 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     var deletionConfirmed = false;
+    String? capturedPassword;
 
     await tester.pumpWidget(
       _wrap(
         DangerZoneScreen(
-          onSubmitDeletion: () async {},
+          requirePasswordOverride: true,
+          onSubmitDeletionWithPassword: (password) async {
+            capturedPassword = password;
+          },
           onDeletionConfirmed: () async {
             deletionConfirmed = true;
           },
@@ -287,6 +292,7 @@ void main() {
     await tester.tap(requestButton);
     await tester.pumpAndSettle();
     expect(find.text('Request account deletion?'), findsNothing);
+    expect(find.byKey(const Key('danger_zone_password_input')), findsNothing);
 
     await tester.enterText(
       find.byKey(const Key('danger_zone_delete_input')),
@@ -300,9 +306,26 @@ void main() {
 
     expect(find.text('Request account deletion?'), findsOneWidget);
     expect(find.text('Keep account'), findsOneWidget);
+    expect(find.byKey(const Key('danger_zone_password_input')), findsOneWidget);
+
+    // Submitting without password shows inline validation error and keeps dialog open
+    await tester.tap(find.text('Request deletion').last);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Please enter your password to confirm deletion.'),
+      findsOneWidget,
+    );
+    expect(deletionConfirmed, isFalse);
+
+    await tester.enterText(
+      find.byKey(const Key('danger_zone_password_input')),
+      'secret-pass-123',
+    );
+    await tester.pump();
 
     await tester.tap(find.text('Request deletion').last);
     await tester.pumpAndSettle();
+    expect(capturedPassword, 'secret-pass-123');
     expect(deletionConfirmed, isTrue);
   });
 
@@ -319,8 +342,9 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         DangerZoneScreen(
-          onSubmitDeletion: () async {
-            throw StateError('Edge function missing');
+          requirePasswordOverride: true,
+          onSubmitDeletionWithPassword: (_) async {
+            throw StateError('Incorrect password');
           },
           onDeletionConfirmed: () async {
             deletionConfirmed = true;
@@ -340,6 +364,12 @@ void main() {
     await tester.ensureVisible(requestButton);
     await tester.tap(requestButton);
     await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('danger_zone_password_input')),
+      'wrong-password',
+    );
+    await tester.pump();
 
     await tester.tap(find.text('Request deletion').last);
     await tester.pumpAndSettle();

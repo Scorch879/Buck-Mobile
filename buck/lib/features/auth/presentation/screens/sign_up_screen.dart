@@ -9,6 +9,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/buck_background.dart';
 import '../../../../core/widgets/buck_button.dart';
 import '../../../../core/widgets/buck_text_field.dart';
+import '../../../onboarding/data/onboarding_service.dart';
 import '../../data/auth_service.dart';
 import '../widgets/buck_logo_badge.dart';
 
@@ -109,6 +110,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       setState(() => _isLoading = false);
 
       if (response.user != null) {
+        final isNewUser = response.user!.identities?.isNotEmpty ?? true;
+        if (isNewUser) {
+          await OnboardingService.instance.markPendingNewSignUp(
+            _emailController.text,
+          );
+        }
+        if (!mounted) return;
         setState(() => _accountCreated = true);
       }
     } on AuthException catch (e) {
