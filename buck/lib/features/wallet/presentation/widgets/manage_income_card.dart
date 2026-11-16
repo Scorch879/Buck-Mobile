@@ -58,19 +58,22 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
       }
     });
 
+    final palette = BuckPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xCC080503),
+        color: palette.isLight
+            ? palette.glassCardBg
+            : const Color(0xCC080503),
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
-          color: const Color(0xFFFF994A),
+          color: palette.glassCardBorder,
           width: 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x2EFF6A13),
+            color: palette.glassCardGlow,
             blurRadius: 28,
-            offset: Offset(0, 0),
+            offset: const Offset(0, 0),
           ),
         ],
       ),

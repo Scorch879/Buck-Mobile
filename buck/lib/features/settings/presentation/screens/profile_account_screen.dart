@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../data/settings_service.dart';
 import '../widgets/settings_common.dart';
 
@@ -102,6 +103,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return SettingsScaffold(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -115,7 +117,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: SettingsColors.cardSurface,
+              color: palette.cardSurface,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: SettingsColors.accentOrange,
@@ -135,7 +137,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: SettingsColors.inputBg,
+                            color: palette.inputBg,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: SettingsColors.accentOrange,
@@ -170,7 +172,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                               height: 32 / 20,
-                              color: SettingsColors.textPrimary,
+                              color: palette.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -182,7 +184,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                               fontSize: 15,
                               fontWeight: FontWeight.w400,
                               height: 22 / 15,
-                              color: SettingsColors.textMuted,
+                              color: palette.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -194,7 +196,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               height: 18 / 13,
-                              color: SettingsColors.accent,
+                              color: palette.textAccent,
                             ),
                           ),
                         ],
@@ -227,7 +229,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                     height: 22 / 15,
-                    color: SettingsColors.textMuted,
+                    color: palette.textSecondary,
                   ),
                 ),
               ],
@@ -237,9 +239,9 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: SettingsColors.cardSurface,
+              color: palette.cardSurface,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: SettingsColors.border, width: 1),
+              border: Border.all(color: palette.border, width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,7 +252,7 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 20 / 14,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -261,16 +263,16 @@ class _ProfileAccountScreenState extends State<ProfileAccountScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
                     height: 22 / 16,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: SettingsColors.inputBg,
+                    fillColor: palette.inputBg,
                     contentPadding: const EdgeInsets.all(14),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: SettingsColors.border,
+                      borderSide: BorderSide(
+                        color: palette.border,
                         width: 1,
                       ),
                     ),
@@ -306,8 +308,9 @@ class _AvatarActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Material(
-      color: SettingsColors.inputBg,
+      color: palette.inputBg,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -316,7 +319,7 @@ class _AvatarActionButton extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: SettingsColors.border, width: 1),
+            border: Border.all(color: palette.border, width: 1),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -325,7 +328,7 @@ class _AvatarActionButton extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w400,
               height: 20 / 16,
-              color: SettingsColors.textPrimary,
+              color: palette.textPrimary,
             ),
           ),
         ),

@@ -40,14 +40,12 @@ void main() {
       // Viewfinder alignment feedback pill
       expect(find.text('Keep it flat. Hold steady.'), findsOneWidget);
 
-      // Capture controls & helper text
+      // Capture controls & removed manual entry pill
       expect(find.byKey(const Key('scanner_gallery_button')), findsOneWidget);
       expect(find.byKey(const Key('scanner_shutter_button')), findsOneWidget);
       expect(find.text('Single receipt'), findsOneWidget);
-      expect(
-        find.text('Review the details before adding an expense.'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('scanner_manual_entry_button')), findsNothing);
+      expect(find.text('Cancel / Manual entry'), findsNothing);
 
       // Toggle flash control
       await tester.tap(find.byKey(const Key('scanner_flash_button')));

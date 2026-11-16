@@ -59,6 +59,7 @@ class _AiAdvisoryBannerState extends State<AiAdvisoryBanner> {
   }
 
   Widget _header() {
+    final palette = BuckPalette.of(context);
     return Row(
       spacing: 10,
       children: [
@@ -88,7 +89,7 @@ class _AiAdvisoryBannerState extends State<AiAdvisoryBanner> {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.55,
-                  color: AppColors.textAccent,
+                  color: palette.textAccent,
                 ),
               ),
               Text(
@@ -96,7 +97,7 @@ class _AiAdvisoryBannerState extends State<AiAdvisoryBanner> {
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -131,17 +132,18 @@ class _AiAdvisoryBannerState extends State<AiAdvisoryBanner> {
   }
 
   List<Widget> _body() {
+    final palette = BuckPalette.of(context);
     final bodyStyle = GoogleFonts.inter(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       height: 22 / 14,
-      color: AppColors.textPrimary,
+      color: palette.textPrimary,
     );
     return [
       if (widget.insights.isEmpty)
         Text(
           'No insights yet. Tap below to generate your financial report with Buck AI.',
-          style: bodyStyle.copyWith(color: AppColors.textSecondary),
+          style: bodyStyle.copyWith(color: palette.textSecondary),
         ),
       for (final insight in widget.insights) Text(insight, style: bodyStyle),
       GestureDetector(

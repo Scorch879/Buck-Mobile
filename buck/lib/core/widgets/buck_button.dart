@@ -22,14 +22,15 @@ class BuckButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     Color bgColor;
     Color textColor;
     Border? border;
 
     switch (variant) {
       case BuckButtonVariant.primaryCream:
-        bgColor = AppColors.raisedCream;
-        textColor = AppColors.textDark;
+        bgColor = palette.isLight ? AppColors.textDark : AppColors.raisedCream;
+        textColor = palette.isLight ? AppColors.raisedCream : AppColors.textDark;
         border = null;
         break;
       case BuckButtonVariant.orange:
@@ -39,8 +40,8 @@ class BuckButton extends StatelessWidget {
         break;
       case BuckButtonVariant.outline:
         bgColor = Colors.transparent;
-        textColor = AppColors.textPrimary;
-        border = Border.all(color: AppColors.inputBorder, width: 1.2);
+        textColor = palette.textPrimary;
+        border = Border.all(color: palette.border, width: 1.2);
         break;
     }
 

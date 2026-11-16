@@ -89,6 +89,7 @@ class BuckFooterNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final activeMeta = _tabMetas[activeTab] ?? _tabMetas[BuckTab.home]!;
     final raisedLeft = activeMeta.centerX - (_circleDiameter / 2);
 
@@ -127,14 +128,16 @@ class BuckFooterNav extends StatelessWidget {
                 height: _barHeight,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.navBarBg,
+                    color: palette.navBarBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.navBarBorder, width: 1),
-                    boxShadow: const [
+                    border: Border.all(color: palette.navBarBorder, width: 1),
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x80120703),
+                        color: palette.isLight
+                            ? const Color(0x286F3818)
+                            : const Color(0x80120703),
                         blurRadius: 18,
-                        offset: Offset(0, 6),
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
@@ -152,10 +155,10 @@ class BuckFooterNav extends StatelessWidget {
                 child: Container(
                   width: _circleDiameter,
                   height: _circleDiameter,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.navRaisedSurface,
-                    boxShadow: [
+                    color: palette.navRaisedSurface,
+                    boxShadow: const [
                       BoxShadow(
                         color: AppColors.navRaisedGlow,
                         blurRadius: 18,

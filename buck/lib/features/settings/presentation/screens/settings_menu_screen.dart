@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../data/settings_service.dart';
 import '../widgets/settings_common.dart';
-import '../widgets/settings_dialogs.dart';
 import 'appearance_screen.dart';
 import 'danger_zone_screen.dart';
 import 'feedback_screen.dart';
@@ -42,13 +42,6 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
     Navigator.of(context).push(CupertinoPageRoute<void>(builder: (_) => screen));
   }
 
-  Future<void> _handleSignOut() async {
-    final confirmed = await showSignOutConfirmationDialog(context);
-    if (confirmed != true || !mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    await widget.onSignOut();
-  }
-
   Future<void> _handleDeletionConfirmed() async {
     if (!mounted) return;
     showSettingsSnackBar(
@@ -68,6 +61,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final showProfile = _matches(
       'Profile & Account',
       'Your details, all in one place.',
@@ -99,7 +93,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
               fontSize: 16,
               fontWeight: FontWeight.w400,
               height: 22 / 16,
-              color: SettingsColors.textPrimary,
+              color: palette.textPrimary,
             ),
             decoration: InputDecoration(
               hintText: 'Search settings',
@@ -107,7 +101,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
                 height: 22 / 16,
-                color: SettingsColors.textMuted,
+                color: palette.textSecondary,
               ),
               prefixIcon: Padding(
                 padding: const EdgeInsets.only(left: 16, right: 10),
@@ -122,7 +116,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 minHeight: 44,
               ),
               filled: true,
-              fillColor: SettingsColors.inputBg,
+              fillColor: palette.inputBg,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 11,
@@ -141,7 +135,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 height: 22 / 17,
-                color: SettingsColors.textPrimary,
+                color: palette.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -166,7 +160,7 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 height: 22 / 17,
-                color: SettingsColors.textPrimary,
+                color: palette.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -198,9 +192,9 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 iconPath: 'assets/icons/profile_panel_triangle_alert.svg',
                 title: 'Danger Zone',
                 subtitle: 'Sensitive account actions',
-                titleColor: SettingsColors.dangerTitle,
-                iconColorFilter: const ColorFilter.mode(
-                  SettingsColors.dangerTitle,
+                titleColor: palette.dangerTitle,
+                iconColorFilter: ColorFilter.mode(
+                  palette.dangerTitle,
                   BlendMode.srcIn,
                 ),
                 onTap: () => _pushScreen(
@@ -218,36 +212,10 @@ class _SettingsMenuScreenState extends State<SettingsMenuScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 15,
-                  color: SettingsColors.textMuted,
+                  color: palette.textSecondary,
                 ),
               ),
             ),
-          const SizedBox(height: 44),
-          Row(
-            children: [
-              SvgPicture.asset(
-                'assets/icons/profile_panel_log_out.svg',
-                width: 20,
-                height: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Your session',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  height: 18 / 13,
-                  color: SettingsColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SettingsRedButton(
-            key: const Key('settings_sign_out_button'),
-            label: 'Sign out',
-            onTap: _handleSignOut,
-          ),
         ],
       ),
     );
@@ -275,6 +243,7 @@ class _SettingsMenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -308,7 +277,7 @@ class _SettingsMenuRow extends StatelessWidget {
                         fontSize: titleFontSize,
                         fontWeight: FontWeight.w600,
                         height: 22 / titleFontSize,
-                        color: titleColor ?? SettingsColors.textPrimary,
+                        color: titleColor ?? palette.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -320,7 +289,7 @@ class _SettingsMenuRow extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         height: 22 / 15,
-                        color: SettingsColors.textMuted,
+                        color: palette.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

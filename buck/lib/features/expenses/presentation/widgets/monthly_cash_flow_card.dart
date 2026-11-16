@@ -34,18 +34,19 @@ class MonthlyCashFlowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final saved = savedRatio.clamp(0.0, 1.0);
     final savedPct = (saved * 100).toStringAsFixed(1);
     final spentPct = ((1 - saved) * 100).toStringAsFixed(1);
     final savingsColor = !incomeTracked
-        ? AppColors.textSecondary
+        ? palette.textSecondary
         : netSavings.startsWith('-')
         ? AppColors.expensePink
         : AppColors.savingsGreen;
     final small = GoogleFonts.inter(
       fontSize: 10,
       fontWeight: FontWeight.w400,
-      color: AppColors.textSecondary,
+      color: palette.textSecondary,
     );
 
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -69,7 +70,7 @@ class MonthlyCashFlowCard extends StatelessWidget {
                     style: GoogleFonts.manrope(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.cardTitle,
+                      color: palette.cardTitle,
                     ),
                   ),
                 ),

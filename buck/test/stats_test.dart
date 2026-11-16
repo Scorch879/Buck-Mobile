@@ -273,5 +273,66 @@ void main() {
       expect(find.text('₱1,000.00'), findsOneWidget); // Shopping
       expect(find.text('₱2,000.00'), findsOneWidget); // Bills
     });
+
+    testWidgets('Recent Activity is a dropdown card showing at most 5 latest entries', (tester) async {
+      tester.view.physicalSize = const Size(440, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final manyExpenses = [
+        for (var i = 1; i <= 8; i++)
+          ExpenseRecord(
+            id: 'e$i',
+            walletId: 'w1',
+            categoryName: 'Food',
+            amount: i * 100.0,
+            description: 'Expense #$i',
+            spentOn: DateTime(2026, 10, i),
+          ),
+      ];
+      final snapshot = FinanceSnapshot(
+        now: now,
+        displayName: 'Tester',
+        wallets: const [Wallet(id: 'w1', name: 'Main', balance: 10000)],
+        activeWallet: const Wallet(id: 'w1', name: 'Main', balance: 10000),
+        walletRemainingPercent: 50,
+        weekTotal: 0,
+        lastWeekTotal: 0,
+        weekDaily: const [0, 0, 0, 0, 0, 0, 0],
+        totalTracked: 3600,
+        averageExpense: 450,
+        monthExpenses: 3600,
+        lastMonthExpenses: 0,
+        monthIncome: 10000,
+        lastMonthIncome: 0,
+        monthExpenseList: manyExpenses,
+        allExpenses: manyExpenses,
+        insights: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatsScreen(snapshot: snapshot, onRefresh: () async {}),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recent Activity'), findsOneWidget);
+      expect(find.text('Latest 5 of 8'), findsOneWidget);
+      // Collapsed by default
+      expect(find.text('Expense #8'), findsNothing);
+
+      final toggle = find.byKey(const Key('stats_activity_dropdown_toggle'));
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+
+      // Shows 5 newest entries (#8..#4) and omits oldest (#3..#1)
+      expect(find.text('Expense #8'), findsOneWidget);
+      expect(find.text('Expense #4'), findsOneWidget);
+      expect(find.text('Expense #3'), findsNothing);
+    });
   });
 }

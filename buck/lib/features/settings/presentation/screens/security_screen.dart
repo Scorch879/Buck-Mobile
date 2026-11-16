@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../data/settings_service.dart';
 import '../widgets/settings_common.dart';
 
@@ -13,6 +14,7 @@ class SecurityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     final provider = settingsContext.providerName;
     final emailHeadline = settingsContext.isGoogleManaged
         ? 'Email is managed by Google.'
@@ -56,7 +58,7 @@ class SecurityScreen extends StatelessWidget {
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           height: 20 / 14,
-                          color: SettingsColors.textPrimary,
+                          color: palette.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -68,7 +70,7 @@ class SecurityScreen extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w400,
                           height: 20 / 15,
-                          color: SettingsColors.textMuted,
+                          color: palette.textSecondary,
                         ),
                       ),
                     ],
@@ -85,10 +87,10 @@ class SecurityScreen extends StatelessWidget {
             description: emailDescription,
           ),
           const SizedBox(height: 12),
-          const Divider(
+          Divider(
             height: 1,
             thickness: 1,
-            color: SettingsColors.border,
+            color: palette.border,
           ),
           const SizedBox(height: 12),
           _ManagedSecurityBlock(
@@ -104,7 +106,7 @@ class SecurityScreen extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w600,
               height: 20 / 14,
-              color: SettingsColors.textPrimary,
+              color: palette.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -114,7 +116,7 @@ class SecurityScreen extends StatelessWidget {
               fontSize: 15,
               fontWeight: FontWeight.w400,
               height: 20 / 15,
-              color: SettingsColors.textMuted,
+              color: palette.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -138,7 +140,7 @@ class SecurityScreen extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 20 / 14,
-                    color: SettingsColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -149,7 +151,7 @@ class SecurityScreen extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                     height: 20 / 15,
-                    color: SettingsColors.textMuted,
+                    color: palette.textSecondary,
                   ),
                 ),
               ],
@@ -175,7 +177,7 @@ class SecurityScreen extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                     height: 20 / 15,
-                    color: SettingsColors.textMuted,
+                    color: palette.textSecondary,
                   ),
                 ),
               ),
@@ -202,6 +204,7 @@ class _ManagedSecurityBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -216,7 +219,7 @@ class _ManagedSecurityBlock extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   height: 18 / 13,
-                  color: SettingsColors.accent,
+                  color: palette.textAccent,
                 ),
               ),
             ),
@@ -229,7 +232,7 @@ class _ManagedSecurityBlock extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w600,
             height: 20 / 14,
-            color: SettingsColors.textPrimary,
+            color: palette.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -239,7 +242,7 @@ class _ManagedSecurityBlock extends StatelessWidget {
             fontSize: 15,
             fontWeight: FontWeight.w400,
             height: 20 / 15,
-            color: SettingsColors.textMuted,
+            color: palette.textSecondary,
           ),
         ),
       ],

@@ -29,17 +29,22 @@ class BuckGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
+    final effectiveBg = background == AppColors.glassCardBg
+        ? palette.glassCardBg
+        : background;
+
     return Container(
       height: height,
       constraints:
           minHeight != null ? BoxConstraints(minHeight: minHeight!) : null,
       padding: padding,
       decoration: BoxDecoration(
-        color: background,
+        color: effectiveBg,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.glassCardBorder, width: 1),
+        border: Border.all(color: palette.glassCardBorder, width: 1),
         boxShadow: [
-          BoxShadow(color: AppColors.glassCardGlow, blurRadius: glowBlur),
+          BoxShadow(color: palette.glassCardGlow, blurRadius: glowBlur),
         ],
       ),
       child: child,

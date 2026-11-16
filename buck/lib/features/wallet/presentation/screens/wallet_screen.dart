@@ -101,7 +101,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       fontSize: 23,
                       fontWeight: FontWeight.w800,
                       height: 28 / 23,
-                      color: const Color(0xFFFFF7EE),
+                      color: BuckPalette.of(context).textPrimary,
                     ),
                   ),
 

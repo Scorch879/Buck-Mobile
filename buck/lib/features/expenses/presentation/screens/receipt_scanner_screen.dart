@@ -501,7 +501,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
             final compact = constraints.maxHeight < 680;
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
+                constraints: const BoxConstraints(maxWidth: 480),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -511,11 +511,11 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
                     // 2. Framing instructions (Figma #2480:689)
                     _buildFramingInstructions(compact: compact),
 
-                    // 3. Rectangular receipt viewfinder (#2480:692 / #2480:693)
+                    // 3. Larger rectangular receipt viewfinder (#2480:692 / #2480:693)
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: compact ? 24 : 28,
+                          horizontal: compact ? 8 : 10,
                         ),
                         child: Center(
                           child: _buildCameraPreview(),
@@ -528,7 +528,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
 
                     // 5. System / Safari bottom safe spacing
                     SizedBox(
-                      height: bottomSafe > 0 ? bottomSafe + 10 : 14,
+                      height: bottomSafe > 0 ? bottomSafe + 4 : 8,
                     ),
                   ],
                 ),
@@ -543,9 +543,9 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   /// Figma "Scanner toolbar" (#2480:679): height 76px (62px compact), padding 0 24px.
   Widget _buildToolbar({bool compact = false}) {
     return SizedBox(
-      height: compact ? 62 : 76,
+      height: compact ? 52 : 60,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -625,7 +625,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   /// Figma "Framing instructions" (#2480:689).
   Widget _buildFramingInstructions({bool compact = false}) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, compact ? 4 : 12, 24, compact ? 10 : 18),
+      padding: EdgeInsets.fromLTRB(18, compact ? 2 : 6, 18, compact ? 6 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -660,7 +660,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   /// selected photos at consistent un-cropped bounds.
   Widget _buildCameraPreview() {
     return AspectRatio(
-      aspectRatio: 0.68,
+      aspectRatio: 0.73,
       child: Container(
         decoration: BoxDecoration(
           color: _previewBg,
@@ -926,7 +926,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   /// Figma "Capture controls" (#2480:700).
   Widget _buildCaptureControls({bool compact = false}) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, compact ? 12 : 20, 24, 0),
+      padding: EdgeInsets.fromLTRB(20, compact ? 6 : 10, 20, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1038,54 +1038,6 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
                   ),
                 ),
               ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Helper text (#2480:714)
-          Text(
-            'Review the details before adding an expense.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: _mutedText,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Manual entry fallback (SRS 3.1.2 / SDD Screen 3)
-          Semantics(
-            button: true,
-            label: 'Manual entry',
-            child: GestureDetector(
-              key: const Key('scanner_manual_entry_button'),
-              behavior: HitTestBehavior.opaque,
-              onTap: _capturing
-                  ? null
-                  : () => Navigator.of(context)
-                      .pop(ScannedReceiptResult.manualEntry()),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceButton,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _strokeBrown, width: 1),
-                ),
-                child: Text(
-                  'Cancel / Manual entry',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _accentOrange,
-                  ),
-                ),
-              ),
             ),
           ),
         ],

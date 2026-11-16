@@ -10,6 +10,7 @@ void main() {
     required ValueChanged<BuckTab> onTabSelected,
   }) {
     return MaterialApp(
+      theme: ThemeData.dark(),
       home: Scaffold(
         body: Center(
           child: BuckFooterNav(

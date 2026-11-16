@@ -130,19 +130,28 @@ void main() {
     expect(find.text('user@gmail.com'), findsOneWidget);
     expect(find.text('Connected with Google'), findsOneWidget);
 
-    // Expand See more
+    // Expand See more (no duplicate Sign out here)
     await tester.tap(find.text('See more'));
     await tester.pumpAndSettle();
     expect(find.text('See less'), findsOneWidget);
     expect(find.text('Open Full Settings'), findsOneWidget);
+    expect(find.text('Sign out of Buck'), findsNothing);
 
-    // Expand Danger Zone and sign out via confirmation dialog
+    // Expand Danger Zone (no Sign out button here)
     await tester.ensureVisible(find.byKey(const Key('panel_danger_zone_row')));
     await tester.tap(find.byKey(const Key('panel_danger_zone_row')));
     await tester.pumpAndSettle();
+    expect(find.text('Account deletion & sensitive actions'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Sign out'));
-    await tester.tap(find.text('Sign out'));
+    // Expand top Profile card to reveal the single Sign out button
+    await tester.ensureVisible(find.byKey(const Key('panel_profile_card_toggle')));
+    await tester.tap(find.byKey(const Key('panel_profile_card_toggle')));
+    await tester.pumpAndSettle();
+
+    final signOutBtn = find.byKey(const Key('panel_profile_sign_out_button'));
+    expect(signOutBtn, findsOneWidget);
+    await tester.ensureVisible(signOutBtn);
+    await tester.tap(signOutBtn);
     await tester.pumpAndSettle();
 
     expect(find.text('Sign out of Buck?'), findsOneWidget);

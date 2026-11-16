@@ -76,6 +76,7 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +96,7 @@ class _Metric extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -104,7 +105,12 @@ class _Metric extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(value, style: AppTextStyles.metricValue),
+          child: Text(
+            value,
+            style: AppTextStyles.metricValue.copyWith(
+              color: palette.metricValue,
+            ),
+          ),
         ),
       ],
     );

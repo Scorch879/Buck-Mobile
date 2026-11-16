@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 class BuckBackground extends StatelessWidget {
   final Widget child;
   final bool useSafeArea;
@@ -10,7 +12,7 @@ class BuckBackground extends StatelessWidget {
     this.useSafeArea = false,
   });
 
-  static const List<Color> _featherColors = [
+  static const List<Color> _darkFeatherColors = [
     Color(0xFF2B1309),
     Color(0xC42B1309),
     Color(0x732B1309),
@@ -18,49 +20,73 @@ class BuckBackground extends StatelessWidget {
     Color(0x002B1309),
   ];
 
+  static const List<Color> _lightFeatherColors = [
+    Color(0xFFF6EDE4),
+    Color(0xD4F6EDE4),
+    Color(0x8CF6EDE4),
+    Color(0x38F6EDE4),
+    Color(0x00F6EDE4),
+  ];
+
   static const List<double> _featherStops = [0.0, 0.22, 0.48, 0.75, 1.0];
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
+    final isLight = palette.isLight;
+
     return Container(
-      color: const Color(0xFF2B1309),
+      color: palette.shellBg,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Preserve the natural dark-brown upper region of background_waves.png
-          // so it transitions smoothly into the #2B1309 browser bar chrome.
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/background_waves.jpg',
-              fit: BoxFit.cover,
-              alignment: const Alignment(0, -0.45),
-              errorBuilder: (context, error, stackTrace) {
-                // Fallback custom radial/linear gradient if asset cannot load
-                return Container(
-                  decoration: const BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment(-0.8, -0.6),
-                      radius: 1.2,
-                      colors: [
-                        Color(0xFF8C3E14),
-                        Color(0xFF351208),
-                        Color(0xFF2B1309),
-                      ],
-                      stops: [0.0, 0.45, 1.0],
+            child: Opacity(
+              opacity: isLight ? 0.16 : 1.0,
+              child: Image.asset(
+                'assets/images/background_waves.jpg',
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -0.45),
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.8, -0.6),
+                        radius: 1.2,
+                        colors: isLight
+                            ? const [
+                                Color(0xFFFFD8BA),
+                                Color(0xFFF9EAE0),
+                                Color(0xFFF6EDE4),
+                              ]
+                            : const [
+                                Color(0xFF8C3E14),
+                                Color(0xFF351208),
+                                Color(0xFF2B1309),
+                              ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
-          // Smooth multi-stop top and bottom background feathers matching Safari's #2B1309 chrome
-          _edgeFeather(isTop: true, height: 180, multiStop: true),
-          _edgeFeather(isTop: false, height: 220, multiStop: true),
-          // Child content
+          _edgeFeather(
+            isTop: true,
+            height: 180,
+            multiStop: true,
+            isLight: isLight,
+          ),
+          _edgeFeather(
+            isTop: false,
+            height: 220,
+            multiStop: true,
+            isLight: isLight,
+          ),
           if (useSafeArea) SafeArea(child: child) else child,
-          // Subtle scroll-edge fades so scrolling content never shears abruptly
-          _edgeFeather(isTop: true, height: 12),
-          _edgeFeather(isTop: false, height: 12),
+          _edgeFeather(isTop: true, height: 12, isLight: isLight),
+          _edgeFeather(isTop: false, height: 12, isLight: isLight),
         ],
       ),
     );
@@ -70,7 +96,10 @@ class BuckBackground extends StatelessWidget {
     required bool isTop,
     required double height,
     bool multiStop = false,
+    bool isLight = false,
   }) {
+    final edgeSolid = isLight ? const Color(0xFFF6EDE4) : const Color(0xFF2B1309);
+    final edgeClear = isLight ? const Color(0x00F6EDE4) : const Color(0x002B1309);
     return Positioned(
       top: isTop ? 0 : null,
       bottom: isTop ? null : 0,
@@ -84,11 +113,8 @@ class BuckBackground extends StatelessWidget {
               begin: isTop ? Alignment.topCenter : Alignment.bottomCenter,
               end: isTop ? Alignment.bottomCenter : Alignment.topCenter,
               colors: multiStop
-                  ? _featherColors
-                  : const [
-                      Color(0xFF2B1309),
-                      Color(0x002B1309),
-                    ],
+                  ? (isLight ? _lightFeatherColors : _darkFeatherColors)
+                  : [edgeSolid, edgeClear],
               stops: multiStop ? _featherStops : const [0.0, 1.0],
             ),
           ),

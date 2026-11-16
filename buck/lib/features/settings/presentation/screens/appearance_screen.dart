@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../data/settings_service.dart';
 import '../widgets/settings_common.dart';
 
@@ -22,6 +23,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return SettingsScaffold(
       child: ValueListenableBuilder<String>(
         valueListenable: SettingsService.instance.selectedTheme,
@@ -41,7 +43,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   height: 18 / 13,
-                  color: SettingsColors.textMuted,
+                  color: palette.textSecondary,
                 ),
               ),
               const SizedBox(height: 20),
@@ -75,7 +77,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                   height: 22 / 15,
-                  color: SettingsColors.textMuted,
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -110,8 +112,9 @@ class _ThemeOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
     return Material(
-      color: selected ? SettingsColors.inputBg : SettingsColors.cardSurface,
+      color: selected ? palette.inputBg : palette.cardSurface,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -123,7 +126,7 @@ class _ThemeOptionCard extends StatelessWidget {
             border: Border.all(
               color: selected
                   ? SettingsColors.accentOrange
-                  : SettingsColors.border,
+                  : palette.border,
               width: 1,
             ),
           ),
@@ -194,7 +197,7 @@ class _ThemeOptionCard extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         height: 20 / 16,
-                        color: SettingsColors.textPrimary,
+                        color: BuckPalette.of(context).textPrimary,
                       ),
                     ),
                   ),
