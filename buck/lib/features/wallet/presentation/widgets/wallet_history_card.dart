@@ -53,8 +53,10 @@ class WalletHistoryCard extends StatefulWidget {
 }
 
 class _WalletHistoryCardState extends State<WalletHistoryCard> {
+  static const int _initialDisplayLimit = 10;
   String _searchQuery = '';
   HistoryFilter _filter = HistoryFilter.all;
+  bool _showAll = false;
   static final _dateFormat = DateFormat('MMM d, yyyy');
 
   @override
@@ -279,11 +281,15 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
           // 3. Activity Items or Empty State (Figma: #2426:1643)
           if (filtered.isEmpty)
             _buildEmptyState(palette)
-          else
+          else ...[
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
+              itemCount: _showAll || _searchQuery.isNotEmpty
+                  ? filtered.length
+                  : (filtered.length > _initialDisplayLimit
+                      ? _initialDisplayLimit
+                      : filtered.length),
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = filtered[index];
@@ -291,83 +297,104 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                     ? incomeAccent
                     : _categoryColor(item.categoryKey);
 
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: palette.isLight
-                        ? palette.surfaceElevated
-                        : const Color(0xFF19100B),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: palette.subtleBorder,
-                      width: 1,
+                return RepaintBoundary(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: palette.isLight
+                          ? palette.surfaceElevated
+                          : const Color(0xFF19100B),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: palette.subtleBorder,
+                        width: 1,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      // Activity Symbol Container (Figma: #2426:1644)
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: iconColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: iconColor.withValues(alpha: 0.35),
-                            width: 1,
+                    child: Row(
+                      children: [
+                        // Activity Symbol Container (Figma: #2426:1644)
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: iconColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: iconColor.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            item.isIncome
+                                ? Icons.arrow_downward
+                                : _categoryIcon(item.categoryKey),
+                            size: 20,
+                            color: iconColor,
                           ),
                         ),
-                        child: Icon(
-                          item.isIncome
-                              ? Icons.arrow_downward
-                              : _categoryIcon(item.categoryKey),
-                          size: 20,
-                          color: iconColor,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                        const SizedBox(width: 12),
 
-                      // Title & Date
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title,
-                              style: GoogleFonts.manrope(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: palette.textPrimary,
+                        // Title & Date
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title,
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _dateFormat.format(item.date),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: palette.textSecondary,
+                              const SizedBox(height: 2),
+                              Text(
+                                _dateFormat.format(item.date),
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: palette.textSecondary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
 
-                      // Amount (Green + for income, Red - for expense)
-                      Text(
-                        '${item.isIncome ? '+' : '-'}${formatPesoCents(item.amount)}',
-                        style: GoogleFonts.manrope(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: item.isIncome ? incomeAccent : expenseAccent,
+                        // Amount (Green + for income, Red - for expense)
+                        Text(
+                          '${item.isIncome ? '+' : '-'}${formatPesoCents(item.amount)}',
+                          style: GoogleFonts.manrope(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: item.isIncome ? incomeAccent : expenseAccent,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
             ),
+            if (_searchQuery.isEmpty && filtered.length > _initialDisplayLimit) ...[
+              const SizedBox(height: 10),
+              Center(
+                child: TextButton(
+                  onPressed: () => setState(() => _showAll = !_showAll),
+                  child: Text(
+                    _showAll
+                        ? 'Show recent $_initialDisplayLimit'
+                        : 'Show all ${filtered.length} activities',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryOrange,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );

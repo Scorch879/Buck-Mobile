@@ -40,16 +40,18 @@ class CategoryDonutChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 1. Solid Pie Chart Canvas with direct percentage labels
-        GestureDetector(
-          onTapUp: (details) => _handleTap(details.localPosition),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: CustomPaint(
-              size: Size(size, size),
-              painter: _PieChartPainter(
-                summary: summary,
-                selectedCategoryId: selectedCategoryId,
+        RepaintBoundary(
+          child: GestureDetector(
+            onTapUp: (details) => _handleTap(details.localPosition),
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: CustomPaint(
+                size: Size(size, size),
+                painter: _PieChartPainter(
+                  summary: summary,
+                  selectedCategoryId: selectedCategoryId,
+                ),
               ),
             ),
           ),
@@ -123,6 +125,25 @@ class _PieChartPainter extends CustomPainter {
   final StatsSummary summary;
   final String? selectedCategoryId;
 
+  static final TextStyle _noDataTextStyle = GoogleFonts.inter(
+    fontSize: 11,
+    color: const Color(0xFFC6B5AB),
+    fontWeight: FontWeight.w500,
+  );
+
+  static final TextStyle _sliceLabelTextStyle = GoogleFonts.manrope(
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    color: const Color(0xFFFFF7EE),
+    shadows: const [
+      Shadow(
+        color: Color(0xCC000000),
+        blurRadius: 3,
+        offset: Offset(0, 1),
+      ),
+    ],
+  );
+
   _PieChartPainter({
     required this.summary,
     required this.selectedCategoryId,
@@ -149,11 +170,7 @@ class _PieChartPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: 'No data',
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            color: const Color(0xFFC6B5AB),
-            fontWeight: FontWeight.w500,
-          ),
+          style: _noDataTextStyle,
         ),
         textDirection: TextDirection.ltr,
       )..layout();
@@ -205,18 +222,7 @@ class _PieChartPainter extends CustomPainter {
         final labelPainter = TextPainter(
           text: TextSpan(
             text: '${cat.percentage.round()}%',
-            style: GoogleFonts.manrope(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFFFFF7EE),
-              shadows: const [
-                Shadow(
-                  color: Color(0xCC000000),
-                  blurRadius: 3,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
+            style: _sliceLabelTextStyle,
           ),
           textDirection: TextDirection.ltr,
         )..layout();

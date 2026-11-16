@@ -116,45 +116,47 @@ class _AiFloatingChatBubbleState extends State<AiFloatingChatBubble>
   }
 
   Widget _buildBubble() {
-    return Semantics(
-      button: true,
-      label: 'Open Buck AI Advisor Chat',
-      child: AnimatedScale(
-        scale: _isDragging ? 1.07 : (_pressed ? 0.92 : 1.0),
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        child: Container(
-          width: _bubbleSize,
-          height: _bubbleSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [
-                AppColors.gradientOrangeStart,
-                AppColors.gradientOrangeEnd,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryOrange.withValues(
-                  alpha: _isDragging ? 0.65 : 0.45,
-                ),
-                blurRadius: _isDragging ? 18 : 14,
-                spreadRadius: _isDragging ? 3 : 2,
+    return RepaintBoundary(
+      child: Semantics(
+        button: true,
+        label: 'Open Buck AI Advisor Chat',
+        child: AnimatedScale(
+          scale: _isDragging ? 1.07 : (_pressed ? 0.92 : 1.0),
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: Container(
+            width: _bubbleSize,
+            height: _bubbleSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [
+                  AppColors.gradientOrangeStart,
+                  AppColors.gradientOrangeEnd,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            ],
-            border: Border.all(
-              color: const Color(0xFFFFD4B2),
-              width: 1.5,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryOrange.withValues(
+                    alpha: _isDragging ? 0.65 : 0.45,
+                  ),
+                  blurRadius: _isDragging ? 18 : 14,
+                  spreadRadius: _isDragging ? 3 : 2,
+                ),
+              ],
+              border: Border.all(
+                color: const Color(0xFFFFD4B2),
+                width: 1.5,
+              ),
             ),
-          ),
-          alignment: Alignment.center,
-          child: SvgPicture.asset(
-            'assets/icons/sparkles.svg',
-            width: 24,
-            height: 24,
+            alignment: Alignment.center,
+            child: SvgPicture.asset(
+              'assets/icons/sparkles.svg',
+              width: 24,
+              height: 24,
+            ),
           ),
         ),
       ),

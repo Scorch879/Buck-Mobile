@@ -12,24 +12,26 @@ class WeeklyLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = values.fold<double>(0, (a, b) => a + b);
-    return Semantics(
-      label: 'Spending by day this week',
-      child: SizedBox(
-        height: height,
-        width: double.infinity,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 650),
-          curve: Curves.easeOutCubic,
-          builder: (context, progress, child) {
-            return CustomPaint(
-              painter: _LinePainter(
-                values,
-                empty: total <= 0,
-                progress: progress,
-              ),
-            );
-          },
+    return RepaintBoundary(
+      child: Semantics(
+        label: 'Spending by day this week',
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder: (context, progress, child) {
+              return CustomPaint(
+                painter: _LinePainter(
+                  values,
+                  empty: total <= 0,
+                  progress: progress,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

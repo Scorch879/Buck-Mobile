@@ -367,64 +367,74 @@ class _MainShellState extends State<MainShell> {
           children: [
             KeyedSubtree(
               key: const ValueKey(BuckTab.wallet),
-              child: WalletScreen(
-                snapshot: snapshot,
-                controller: _finance,
-                onRefresh: _finance.refresh,
-                onAddIncome: _addIncome,
-                onScanIncome: _scanIncomeReceipt,
-                onMessage: _showMessage,
-                bottomInset: contentInset,
-                onboardingTargets: _onboardingTargets,
+              child: RepaintBoundary(
+                child: WalletScreen(
+                  snapshot: snapshot,
+                  controller: _finance,
+                  onRefresh: _finance.refresh,
+                  onAddIncome: _addIncome,
+                  onScanIncome: _scanIncomeReceipt,
+                  onMessage: _showMessage,
+                  bottomInset: contentInset,
+                  onboardingTargets: _onboardingTargets,
+                ),
               ),
             ),
             KeyedSubtree(
               key: const ValueKey(BuckTab.expenses),
-              child: ExpensesScreen(
-                snapshot: snapshot,
-                onRefresh: _finance.refresh,
-                onAddExpense: () => _onQuickAction(QuickAction.addExpense),
-                onScanReceipt: _scanReceipt,
-                bottomInset: contentInset,
-                onboardingTargets: _onboardingTargets,
+              child: RepaintBoundary(
+                child: ExpensesScreen(
+                  snapshot: snapshot,
+                  onRefresh: _finance.refresh,
+                  onAddExpense: () => _onQuickAction(QuickAction.addExpense),
+                  onScanReceipt: _scanReceipt,
+                  bottomInset: contentInset,
+                  onboardingTargets: _onboardingTargets,
+                ),
               ),
             ),
             KeyedSubtree(
               key: const ValueKey(BuckTab.home),
-              child: HomeDashboardScreen(
-                snapshot: snapshot,
-                onQuickAction: _onQuickAction,
-                onRefresh: _finance.refresh,
-                onOpenReport: () => showAiReportDialog(
-                  context: context,
-                  onInsightUpdated: _finance.refresh,
+              child: RepaintBoundary(
+                child: HomeDashboardScreen(
+                  snapshot: snapshot,
+                  onQuickAction: _onQuickAction,
+                  onRefresh: _finance.refresh,
+                  onOpenReport: () => showAiReportDialog(
+                    context: context,
+                    onInsightUpdated: _finance.refresh,
+                  ),
+                  bottomInset: contentInset,
+                  onboardingTargets: _onboardingTargets,
                 ),
-                bottomInset: contentInset,
-                onboardingTargets: _onboardingTargets,
               ),
             ),
             KeyedSubtree(
               key: const ValueKey(BuckTab.stats),
-              child: StatsScreen(
-                snapshot: snapshot,
-                onRefresh: _finance.refresh,
-                bottomInset: contentInset,
-                onboardingTargets: _onboardingTargets,
+              child: RepaintBoundary(
+                child: StatsScreen(
+                  snapshot: snapshot,
+                  onRefresh: _finance.refresh,
+                  bottomInset: contentInset,
+                  onboardingTargets: _onboardingTargets,
+                ),
               ),
             ),
             KeyedSubtree(
               key: const ValueKey(BuckTab.goals),
-              child: GoalsScreen(
-                controller: _goals,
-                activeWalletId: snapshot.activeWallet?.id,
-                activeWalletBalance: snapshot.activeWallet?.balance,
-                onRefresh: () async {
-                  await _finance.refresh();
-                  await _goals.refresh();
-                },
-                onAction: _showMessage,
-                bottomInset: contentInset,
-                onboardingTargets: _onboardingTargets,
+              child: RepaintBoundary(
+                child: GoalsScreen(
+                  controller: _goals,
+                  activeWalletId: snapshot.activeWallet?.id,
+                  activeWalletBalance: snapshot.activeWallet?.balance,
+                  onRefresh: () async {
+                    await _finance.refresh();
+                    await _goals.refresh();
+                  },
+                  onAction: _showMessage,
+                  bottomInset: contentInset,
+                  onboardingTargets: _onboardingTargets,
+                ),
               ),
             ),
           ],
@@ -469,55 +479,56 @@ class _MainShellState extends State<MainShell> {
           ),
           Column(
             children: [
-              BuckHeader(
-                title: _profileSummary.welcomeTitle,
-                onMenuTap: _showMenuSheet,
-                onSwipeOpenMenu: _showMenuSheet,
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final height = constraints.maxHeight;
-                    if (height <= 0) return const SizedBox.shrink();
-                    final fadeEnd =
-                        ((height - footerBottom - footerHeight - 2) / height)
-                            .clamp(0.0, 1.0);
-                    final fadeStart =
-                        ((height - footerBottom - footerHeight - 34) / height)
-                            .clamp(0.0, fadeEnd);
-
-                    return ShaderMask(
-                      blendMode: BlendMode.dstIn,
-                      shaderCallback: (bounds) => LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: const [
-                          Colors.white,
-                          Colors.white,
-                          Colors.transparent,
-                          Colors.transparent,
-                        ],
-                        stops: [0.0, fadeStart, fadeEnd, 1.0],
-                      ).createShader(bounds),
-                      child: pageContent,
-                    );
-                  },
+              RepaintBoundary(
+                child: BuckHeader(
+                  title: _profileSummary.welcomeTitle,
+                  onMenuTap: _showMenuSheet,
+                  onSwipeOpenMenu: _showMenuSheet,
                 ),
               ),
+              Expanded(child: pageContent),
             ],
+          ),
+          // Lightweight bottom edge feather behind the floating footer bar
+          // (replaces full-screen ShaderMask saveLayer for smooth 60/120fps scrolling).
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: footerBottom + footerHeight + 34,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      palette.shellBg.withValues(alpha: 0.0),
+                      palette.shellBg,
+                      palette.shellBg,
+                    ],
+                    stops: const [0.0, 0.35, 1.0],
+                  ),
+                ),
+              ),
+            ),
           ),
           Positioned(
             left: 0,
             right: 0,
             bottom: footerBottom,
-            child: BuckFooterNav(
-              activeTab: _tab,
-              onTabSelected: _onTabSelected,
+            child: RepaintBoundary(
+              child: BuckFooterNav(
+                activeTab: _tab,
+                onTabSelected: _onTabSelected,
+              ),
             ),
           ),
           Positioned.fill(
-            child: AiFloatingChatBubble(
-              bottomRestOffset: footerBottom + footerHeight + 12,
+            child: RepaintBoundary(
+              child: AiFloatingChatBubble(
+                bottomRestOffset: footerBottom + footerHeight + 12,
+              ),
             ),
           ),
           // Left-edge swipe-right zone so users can pull the Profile Side Panel
