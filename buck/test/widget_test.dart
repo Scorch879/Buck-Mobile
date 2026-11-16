@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:buck/core/theme/app_colors.dart';
 import 'package:buck/features/settings/data/settings_service.dart';
 import 'package:buck/main.dart';
 
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('Buck app launches with splash, clean Sign In screen, and working Light/Dark theme', (WidgetTester tester) async {
     await SettingsService.instance.setTheme('Dark');
     await tester.pumpWidget(const BuckApp());
