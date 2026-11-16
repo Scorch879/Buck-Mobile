@@ -40,5 +40,52 @@ class AppColors {
   static const Color navBarBg = Color(0xFF100B09);         // Bottom navigation bar container
   static const Color navBarBorder = Color(0xFFFDBA74);     // Bottom navigation border
   static const Color navBarIcon = Color(0xFFFF8E5D);       // Bottom navbar icon color
+  static const Color navBarIconActive = Color(0xCCFF4400); // Active navbar icon (vivid orange @ 80%)
   static const Color navBarActive = Color(0xFFFFF7EE);     // Active home button icon
+  static const Color navRaisedSurface = Color(
+    0xFFFFE7D2,
+  ); // Raised active tab circle
+  static const Color navRaisedGlow = Color(0x47F97316); // Glow under raised tab
+
+  // App Shell (Header / Screen backdrop)
+  static const Color headerBorder = Color(0xFFFF994A); // Header bottom stroke
+  static const Color screenGradientTop = Color(0xFF180D09);
+  static const Color screenGradientBottom = Color(0xFF4A1D0B);
+
+  // Glass Cards (dashboard / expenses)
+  static const Color glassCardBg = Color(0xB3000000); // Black @ 70%
+  static const Color glassCardBorder = Color(0xEBFF994A); // Orange @ 92%
+  static const Color glassCardGlow = Color(0x2EFF6A13); // Orange glow @ 18%
+  static const Color cardTitle = Color(0xFFD5E2F5); // Cool card title text
+  static const Color metricValue = Color(0xFFF7FAFF); // Metric numbers
+  static const Color subtleDivider = Color(0x94785B4C); // Brown divider @ 58%
+  static const Color listFooterBg = Color(
+    0xFF120B07,
+  ); // Recent list footer strip
+
+  // Quick Actions
+  static const Color actionIconBg = Color(0xFF1A1008);
+  static const Color actionIconBorder = Color(0x66FF994A); // Orange @ 40%
+
+  // Orange gradient (AI icon, wallet / plus buttons)
+  static const Color gradientOrangeStart = Color(0xFFE57136);
+  static const Color gradientOrangeEnd = Color(0xFFFF8D43);
+
+  // Wallet allocation bars
+  static const Color walletPurple = Color(0xFF936CE4);
+  static const Color walletGreen = Color(0xFF2F9E7C);
+  static const Color walletOrange = Color(0xFFFF8E5D);
+  static const Color walletTeal = Color(0xFF2A7D8C);
+
+  // Badges (translucent variant)
+  static const Color badgeCyanBgSoft = Color(0x7D00415D); // Dark cyan @ 49%
+
+  // Cash Flow (Income / Expenses / Savings)
+  static const Color incomeGreen = Color(0xFF36C49A);
+  static const Color incomeTileBg = Color(0xFF0D2B1A);
+  static const Color incomeTileBorder = Color(0x4536C49A); // Green @ 27%
+  static const Color expensePink = Color(0xFFE95879);
+  static const Color expenseTileBg = Color(0xFF2B0D15);
+  static const Color expenseTileBorder = Color(0x45E95879); // Pink @ 27%
+  static const Color savingsGreen = Color(0xFF4ADE80);
 }

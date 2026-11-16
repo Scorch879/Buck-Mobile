@@ -1,46 +1,498 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2B1309">
+  <meta name="description" content="Buck - Finance & Expenses Tracker">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="buck">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
+  <!-- Favicon & Resource Hints -->
   <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://glnuzqmnmzuxgujmxigx.supabase.co" crossorigin>
+  <link rel="preload" href="flutter_bootstrap.js" as="script">
+  <link rel="preload" href="main.dart.js" as="script">
 
   <title>buck</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html,
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      min-height: 100% !important;
+      height: auto !important;
+      background-color: #2B1309 !important;
+      background: #2B1309 !important;
+      overflow-x: clip !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      -webkit-tap-highlight-color: transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    flutter-view,
+    flt-glass-pane,
+    flt-scene-host {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+      background-color: #2B1309 !important;
+      background: #2B1309 !important;
+    }
+
+    /* Hidden probes measuring CSS safe-area insets and dynamic vs large viewport height. */
+    #buck-viewport-probe {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100dvh;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      pointer-events: none;
+      visibility: hidden;
+      z-index: -1;
+    }
+
+    #buck-lvh-probe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 100lvh;
+      pointer-events: none;
+      visibility: hidden;
+      z-index: -1;
+    }
+
+    #buck-boot-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background-color: #2B1309;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.22s ease-out;
+    }
+
+    #buck-boot-loader.hidden {
+      opacity: 0;
+    }
+
+    .buck-boot-badge {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #FFF6E5;
+      color: #2B1309;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 800 26px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-shadow: 0 0 0 6px rgba(255, 118, 56, 0.22);
+      animation: buckPulse 1.3s ease-in-out infinite;
+    }
+
+    @keyframes buckPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 5px rgba(255, 118, 56, 0.18); }
+      50% { transform: scale(1.04); box-shadow: 0 0 0 11px rgba(255, 118, 56, 0.34); }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="buck-boot-loader" aria-hidden="true">
+    <div class="buck-boot-badge">B</div>
+  </div>
+  <div id="buck-viewport-probe" aria-hidden="true"></div>
+  <div id="buck-lvh-probe" aria-hidden="true"></div>
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      var loader = document.getElementById('buck-boot-loader');
+      if (!loader) return;
+      loader.classList.add('hidden');
+      setTimeout(function() { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 260);
+    }, { once: true });
+  </script>
+  <script>
+    // Re-apply viewport-fit=cover because Flutter Web rewrites the viewport
+    // meta tag on startup, and expose safe-area insets without overriding
+    // documentElement.clientWidth / clientHeight so Flutter matches 100dvh.
+    (function() {
+      function _buckEnsureViewportCover() {
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        var content = meta.getAttribute('content') || '';
+        if (content.indexOf('viewport-fit=cover') === -1) {
+          meta.setAttribute('content', content + ', viewport-fit=cover');
+        }
+      }
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+      _buckEnsureViewportCover();
+      if (typeof MutationObserver !== 'undefined' && document.head) {
+        new MutationObserver(_buckEnsureViewportCover).observe(document.head, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['content']
+        });
+      }
+
+      window.buckGetSafeInsets = function() {
+        try {
+          var probe = document.getElementById('buck-viewport-probe');
+          if (!probe) {
+            return JSON.stringify({
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              browserBarBottom: 0
+            });
+          }
+          var style = window.getComputedStyle(probe);
+          var envTop = parseFloat(style.paddingTop) || 0;
+          var envRight = parseFloat(style.paddingRight) || 0;
+          var envBottom = parseFloat(style.paddingBottom) || 0;
+          var envLeft = parseFloat(style.paddingLeft) || 0;
+
+          var barBottom = 0;
+          var lvhProbe = document.getElementById('buck-lvh-probe');
+          if (lvhProbe) {
+            var lvhH = lvhProbe.getBoundingClientRect().height || 0;
+            var dvhH = probe.getBoundingClientRect().height || window.innerHeight || 0;
+            var vvH = (window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : dvhH;
+            var keyboardOpen = (dvhH - vvH) > 130;
+            if (!keyboardOpen && lvhH > dvhH + 2) {
+              barBottom = Math.min(96, Math.round(lvhH - dvhH));
+            }
+          }
+
+          return JSON.stringify({
+            top: envTop,
+            bottom: envBottom,
+            left: envLeft,
+            right: envRight,
+            browserBarBottom: barBottom
+          });
+        } catch (e) {
+          return JSON.stringify({
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            browserBarBottom: 0
+          });
+        }
+      };
+
+      var _buckInsetSubscribers = [];
+      function _buckNotifyInsets() {
+        for (var i = 0; i < _buckInsetSubscribers.length; i++) {
+          try { _buckInsetSubscribers[i](); } catch (_) {}
+        }
+      }
+
+      window.buckSubscribeSafeInsets = function(cb) {
+        if (typeof cb === 'function') {
+          _buckInsetSubscribers.push(cb);
+        }
+      };
+
+      window.addEventListener('resize', _buckNotifyInsets, { passive: true });
+      window.addEventListener('orientationchange', _buckNotifyInsets, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', _buckNotifyInsets, { passive: true });
+        window.visualViewport.addEventListener('scroll', _buckNotifyInsets, { passive: true });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        var _ro = new ResizeObserver(_buckNotifyInsets);
+        var p1 = document.getElementById('buck-viewport-probe');
+        var p2 = document.getElementById('buck-lvh-probe');
+        if (p1) _ro.observe(p1);
+        if (p2) _ro.observe(p2);
+      }
+
+      window.buckSetThemeColor = function(hex) {
+        try {
+          if (!hex) return;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', hex);
+          document.documentElement.style.setProperty('background-color', hex, 'important');
+          document.documentElement.style.setProperty('background', hex, 'important');
+          if (document.body) {
+            document.body.style.setProperty('background-color', hex, 'important');
+            document.body.style.setProperty('background', hex, 'important');
+          }
+          var host = document.querySelector('flutter-view');
+          if (host) {
+            host.style.setProperty('background-color', hex, 'important');
+            host.style.setProperty('background', hex, 'important');
+          }
+        } catch (_) {}
+      };
+    })();
+
+    window._buckLoadScript = function(src) {
+      return new Promise(function(resolve, reject) {
+        var existing = document.querySelector('script[src="' + src + '"]');
+        if (existing) {
+          if (window.Tesseract) {
+            resolve();
+          } else {
+            existing.addEventListener('load', resolve);
+            existing.addEventListener('error', reject);
+          }
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    window._buckTesseractWorkerPromise = null;
+    window._buckGetTesseractWorker = async function() {
+      if (!window.Tesseract) {
+        await window._buckLoadScript(
+          'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
+        );
+      }
+      if (!window.Tesseract) return null;
+      if (!window._buckTesseractWorkerPromise) {
+        window._buckTesseractWorkerPromise = (async function() {
+          var worker = await window.Tesseract.createWorker('eng');
+          if (worker && typeof worker.setParameters === 'function') {
+            await worker.setParameters({
+              tessedit_pageseg_mode: '6',
+              preserve_interword_spaces: '1'
+            });
+          }
+          return worker;
+        })().catch(function(err) {
+          window._buckTesseractWorkerPromise = null;
+          throw err;
+        });
+      }
+      return window._buckTesseractWorkerPromise;
+    };
+
+    window._buckPreprocessReceiptCanvas = async function(dataUrl, invertColors) {
+      return new Promise(function(resolve) {
+        var img = new Image();
+        img.onload = function() {
+          try {
+            var srcW = img.naturalWidth || img.width || 0;
+            var srcH = img.naturalHeight || img.height || 0;
+            if (!srcW || !srcH) {
+              resolve(dataUrl);
+              return;
+            }
+            var maxSide = 1800;
+            var minWidth = 960;
+            var scale = 1.0;
+            var longest = Math.max(srcW, srcH);
+            if (longest > maxSide) {
+              scale = maxSide / longest;
+            } else if (srcW < minWidth && longest * (minWidth / srcW) <= maxSide) {
+              scale = minWidth / srcW;
+            }
+            var w = Math.max(1, Math.round(srcW * scale));
+            var h = Math.max(1, Math.round(srcH * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) {
+              resolve(dataUrl);
+              return;
+            }
+            ctx.drawImage(img, 0, 0, w, h);
+
+            var imgData = ctx.getImageData(0, 0, w, h);
+            var d = imgData.data;
+            var pixelCount = w * h;
+            var luma = new Uint8Array(pixelCount);
+            var hist = new Uint32Array(256);
+
+            for (var i = 0, p = 0; i < d.length; i += 4, p++) {
+              var g = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+              if (invertColors) g = 255 - g;
+              if (g < 0) g = 0;
+              else if (g > 255) g = 255;
+              luma[p] = g;
+              hist[g]++;
+            }
+
+            // Stretch ink (4th percentile) -> 0 and paper background (92nd percentile) -> 255.
+            var lowCut = Math.floor(pixelCount * 0.04);
+            var highCut = Math.floor(pixelCount * 0.92);
+            var cum = 0;
+            var pLow = 0;
+            var pHigh = 255;
+            var foundLow = false;
+            for (var v = 0; v < 256; v++) {
+              cum += hist[v];
+              if (!foundLow && cum >= lowCut) {
+                pLow = v;
+                foundLow = true;
+              }
+              if (cum >= highCut) {
+                pHigh = v;
+                break;
+              }
+            }
+            var span = Math.max(24, pHigh - pLow);
+
+            for (var idx = 0, q = 0; idx < d.length; idx += 4, q++) {
+              var norm = (luma[q] - pLow) / span;
+              if (norm < 0) norm = 0;
+              else if (norm > 1) norm = 1;
+              // Crisp curve: darken printed thermal ink while brightening paper backdrop.
+              var stretched = norm < 0.45
+                ? Math.round(Math.pow(norm / 0.45, 1.35) * 90)
+                : Math.round(90 + ((norm - 0.45) / 0.55) * 165);
+              if (stretched > 235) stretched = 255;
+              d[idx] = stretched;
+              d[idx + 1] = stretched;
+              d[idx + 2] = stretched;
+              d[idx + 3] = 255;
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch (_) {
+            resolve(dataUrl);
+          }
+        };
+        img.onerror = function() { resolve(dataUrl); };
+        img.src = dataUrl;
+      });
+    };
+
+    window.buckRecognizeReceiptBase64 = async function(base64Image) {
+      try {
+        if (!base64Image) return '';
+        var worker = await window._buckGetTesseractWorker();
+        if (!worker) return '';
+        var mime = base64Image.startsWith('iVBOR')
+          ? 'image/png'
+          : (base64Image.startsWith('UklGR') ? 'image/webp' : 'image/jpeg');
+        var rawUrl = 'data:' + mime + ';base64,' + base64Image;
+
+        var cleanUrl = await window._buckPreprocessReceiptCanvas(rawUrl, false);
+        var result = await worker.recognize(cleanUrl);
+        var text = (result && result.data && result.data.text) ? result.data.text.trim() : '';
+
+        // Dark-mode digital receipts or faint captures fall back to inverted contrast pass.
+        if (text.length < 16) {
+          var invUrl = await window._buckPreprocessReceiptCanvas(rawUrl, true);
+          var invResult = await worker.recognize(invUrl);
+          var invText = (invResult && invResult.data && invResult.data.text) ? invResult.data.text.trim() : '';
+          if (invText.length > text.length) {
+            text = invText;
+          }
+        }
+        return text;
+      } catch (e) {
+        console.warn('Buck web OCR failed:', e);
+        return '';
+      }
+    };
+  </script>
+  <script>
+    // Unregister stale Flutter/PWA service workers and clear cached Flutter
+    // assets so phones and browsers immediately receive fresh JS/WASM builds.
+    (function() {
+      var BUCK_CACHE_PURGE_KEY = 'buck_sw_purged_v4';
+      (async function() {
+        try {
+          var hadController = Boolean(
+            'serviceWorker' in navigator &&
+            navigator.serviceWorker &&
+            navigator.serviceWorker.controller
+          );
+          if ('serviceWorker' in navigator &&
+              navigator.serviceWorker &&
+              typeof navigator.serviceWorker.getRegistrations === 'function') {
+            var registrations = await navigator.serviceWorker.getRegistrations();
+            if (registrations && registrations.length) {
+              var unregTasks = [];
+              for (var i = 0; i < registrations.length; i++) {
+                try {
+                  unregTasks.push(
+                    Promise.resolve(registrations[i].unregister()).catch(function() {})
+                  );
+                } catch (_) {}
+              }
+              await Promise.all(unregTasks);
+            }
+          }
+          if ('caches' in window &&
+              window.caches &&
+              typeof window.caches.keys === 'function' &&
+              typeof window.caches.delete === 'function') {
+            var keys = await window.caches.keys();
+            if (keys && keys.length) {
+              var cacheTasks = [];
+              for (var j = 0; j < keys.length; j++) {
+                var key = keys[j];
+                if (typeof key === 'string' &&
+                    (key.indexOf('flutter-') === 0 || key.indexOf('workbox-') === 0)) {
+                  try {
+                    cacheTasks.push(
+                      Promise.resolve(window.caches.delete(key)).catch(function() {})
+                    );
+                  } catch (_) {}
+                }
+              }
+              await Promise.all(cacheTasks);
+            }
+          }
+          try {
+            if (hadController &&
+                window.sessionStorage &&
+                !window.sessionStorage.getItem(BUCK_CACHE_PURGE_KEY)) {
+              window.sessionStorage.setItem(BUCK_CACHE_PURGE_KEY, '1');
+              window.location.reload();
+            }
+          } catch (_) {}
+        } catch (_) {}
+      })();
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

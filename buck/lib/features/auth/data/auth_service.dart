@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../ai/data/services/buck_ai_service.dart';
 
 class AuthService {
   final SupabaseClient? _customClient;
@@ -54,16 +57,58 @@ class AuthService {
     );
   }
 
+  /// Deep link the native apps listen on (see AndroidManifest.xml / Info.plist).
+  static const String mobileRedirectUrl = 'buck://auth-callback';
+
+  /// Where Supabase sends the user back after Google sign-in.
+  /// - Web: back to this Flutter app's own origin with trailing slash (e.g. http://localhost:8080/),
+  ///   which matches Supabase allowlists like 'http://localhost:8080/' or 'http://localhost:8080/**'.
+  /// - Android/iOS: the custom `buck://auth-callback` deep link.
+  static String get oauthRedirectUrl {
+    if (kIsWeb) {
+      final origin = Uri.base.origin;
+      return origin.endsWith('/') ? origin : '$origin/';
+    }
+    return mobileRedirectUrl;
+  }
+
   /// Initiate OAuth flow with Google
   Future<bool> signInWithGoogle() async {
-    return await _client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'buck://auth-callback',
+    final redirectTo = oauthRedirectUrl;
+    final res = await _client.auth.getOAuthSignInUrl(
+      provider: OAuthProvider.google,
+      redirectTo: redirectTo,
+    );
+
+    var targetUrl = res.url;
+    final codeChallenge = Uri.parse(res.url).queryParameters['code_challenge'];
+    if (codeChallenge != null && codeChallenge.isNotEmpty) {
+      try {
+        final directUrl = await _client.rpc<String>(
+          'create_mobile_google_oauth_url',
+          params: {
+            'p_code_challenge': codeChallenge,
+            'p_redirect_to': redirectTo,
+          },
+        );
+        if (directUrl.isNotEmpty) {
+          targetUrl = directUrl;
+        }
+      } catch (_) {
+        // Fall back to the standard Supabase OAuth URL if the RPC fails.
+      }
+    }
+
+    return await launchUrl(
+      Uri.parse(targetUrl),
+      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      webOnlyWindowName: '_self',
     );
   }
 
   /// Sign Out
   Future<void> signOut() async {
+    BuckAiService.instance.resetSessionState();
     if (SupabaseService.isInitialized) {
       await _client.auth.signOut();
     }

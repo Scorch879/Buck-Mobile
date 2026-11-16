@@ -1,0 +1,65 @@
+name: Build iOS Unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+      - main
+      - maintenance-branch
+
+jobs:
+  build-ipa:
+    name: Build Unsigned iOS IPA
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: buck
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Dart/Flutter dependencies
+        run: flutter pub get
+
+      - name: Ensure iOS Podfile targets 15.5 for ML Kit
+        run: |
+          if [ -f ios/Runner.xcodeproj/project.pbxproj ]; then
+            sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.5;/g" ios/Runner.xcodeproj/project.pbxproj
+          fi
+          if [ ! -f ios/Podfile ]; then
+            flutter build ios --config-only --no-codesign
+          fi
+          if grep -q "^# *platform :ios" ios/Podfile; then
+            sed -i '' "s/^# *platform :ios.*/platform :ios, '15.5'/" ios/Podfile
+          elif grep -q "^platform :ios" ios/Podfile; then
+            sed -i '' "s/^platform :ios.*/platform :ios, '15.5'/" ios/Podfile
+          else
+            printf "platform :ios, '15.5'\n%s" "$(cat ios/Podfile)" > ios/Podfile
+          fi
+          cd ios && pod install --repo-update
+
+      - name: Build iOS release bundle (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package Runner.app into Buck-iOS.ipa
+        run: |
+          mkdir -p build/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/
+          cd build/ipa
+          zip -r -y ../Buck-iOS.ipa Payload
+
+      - name: Upload Buck-iOS.ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Buck-iOS-IPA
+          path: buck/build/Buck-iOS.ipa
+          retention-days: 14
