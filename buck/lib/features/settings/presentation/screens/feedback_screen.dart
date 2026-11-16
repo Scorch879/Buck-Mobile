@@ -79,10 +79,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   Future<void> _sendFeedback() async {
     final title = _titleController.text.trim();
     final details = _detailsController.text.trim();
-    if (title.isEmpty && details.isEmpty) {
+    if (title.isEmpty || details.isEmpty) {
       showSettingsSnackBar(
         context,
-        'Please enter a short summary or details.',
+        'Please enter a short summary and details.',
         isError: true,
       );
       return;
@@ -101,11 +101,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         'Thanks for your $_selectedCategory! Our team reads every note.',
       );
       Navigator.of(context).pop();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       showSettingsSnackBar(
         context,
-        'Unable to send feedback right now.',
+        'Unable to send feedback right now: $e',
         isError: true,
       );
     } finally {

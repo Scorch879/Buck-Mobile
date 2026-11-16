@@ -129,6 +129,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.width < 380;
+    final palette = BuckPalette.of(context);
 
     return Center(
       child: ConstrainedBox(
@@ -148,17 +149,17 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildHeader(context),
-                  const Divider(color: AppColors.subtleDivider, height: 1),
+                  _buildHeader(context, palette),
+                  Divider(color: palette.divider, height: 1),
                   Flexible(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(20),
                       child: _loading
-                          ? _buildLoadingState()
+                          ? _buildLoadingState(palette)
                           : _errorMessage != null
-                              ? _buildErrorState()
+                              ? _buildErrorState(palette)
                               : _insight != null
-                                  ? _buildReportBody(_insight!)
+                                  ? _buildReportBody(_insight!, palette)
                                   : const SizedBox.shrink(),
                     ),
                   ),
@@ -171,7 +172,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, BuckPalette palette) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -206,7 +207,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.6,
-                    color: AppColors.textAccent,
+                    color: palette.textAccent,
                   ),
                 ),
                 Text(
@@ -214,14 +215,14 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                   style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.cardTitle,
+                    color: palette.cardTitle,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+            icon: Icon(Icons.close, color: palette.textSecondary, size: 20),
             onPressed: () => Navigator.of(context).pop(),
             splashRadius: 20,
           ),
@@ -230,17 +231,17 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
     );
   }
 
-  Widget _buildLoadingState() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48),
+  Widget _buildLoadingState(BuckPalette palette) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
       child: Center(
         child: Column(
           children: [
-            CircularProgressIndicator(color: AppColors.primaryOrange),
-            SizedBox(height: 16),
+            const CircularProgressIndicator(color: AppColors.primaryOrange),
+            const SizedBox(height: 16),
             Text(
               'Analyzing financial metrics with Buck AI...',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: palette.textSecondary, fontSize: 13),
             ),
           ],
         ),
@@ -248,7 +249,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(BuckPalette palette) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Center(
@@ -259,7 +260,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
             Text(
               _errorMessage ?? 'Unable to connect to AI Advisor',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+              style: TextStyle(color: palette.textPrimary, fontSize: 13),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -278,10 +279,16 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
     );
   }
 
-  Widget _buildReportBody(AiInsightResponse report) {
+  Widget _buildReportBody(AiInsightResponse report, BuckPalette palette) {
     final score = report.financialHealthScore;
     final scoreColor = _getScoreColor(score);
     final canRegenerate = !_loading && _cooldownSeconds <= 0;
+    final subCardBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0xFF140B07);
+    final adviceCardBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0xFF160D08);
+    final badgeBg =
+        palette.isLight ? palette.inputBg : const Color(0xFF231610);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -290,7 +297,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF140B07),
+            color: subCardBg,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: scoreColor.withValues(alpha: 0.3)),
           ),
@@ -331,7 +338,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
-                              color: AppColors.textSecondary,
+                              color: palette.textSecondary,
                             ),
                           ),
                         ),
@@ -359,7 +366,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                       style: GoogleFonts.manrope(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: palette.textPrimary,
                       ),
                     ),
                   ],
@@ -396,7 +403,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       height: 1.45,
-                      color: AppColors.textPrimary,
+                      color: palette.textPrimary,
                     ),
                   ),
                 ),
@@ -413,7 +420,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
-            color: AppColors.textAccent,
+            color: palette.textAccent,
           ),
         ),
         const SizedBox(height: 8),
@@ -423,7 +430,9 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
             fontSize: 13,
             fontWeight: FontWeight.w400,
             height: 1.55,
-            color: const Color(0xFFE2D6CF),
+            color: palette.isLight
+                ? palette.textPrimary
+                : const Color(0xFFE2D6CF),
           ),
         ),
 
@@ -436,16 +445,16 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
-              color: AppColors.textAccent,
+              color: palette.textAccent,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF160D08),
+              color: adviceCardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.3)),
+              border: Border.all(color: palette.subtleBorder),
             ),
             child: Text(
               report.walletAdvice,
@@ -453,7 +462,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
                 height: 1.5,
-                color: AppColors.textPrimary,
+                color: palette.textPrimary,
               ),
             ),
           ),
@@ -469,7 +478,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF231610),
+                  color: badgeBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -479,7 +488,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: palette.textSecondary,
                   ),
                 ),
               ),
@@ -490,7 +499,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
               icon: Icon(
                 Icons.refresh,
                 size: 14,
-                color: canRegenerate ? AppColors.primaryOrange : AppColors.textSecondary,
+                color: canRegenerate ? AppColors.primaryOrange : palette.textSecondary,
               ),
               label: Text(
                 _cooldownSeconds > 0
@@ -499,7 +508,7 @@ class _AiReportDialogContentState extends State<_AiReportDialogContent> {
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: canRegenerate ? AppColors.primaryOrange : AppColors.textSecondary,
+                  color: canRegenerate ? AppColors.primaryOrange : palette.textSecondary,
                 ),
               ),
             ),

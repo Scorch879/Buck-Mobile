@@ -85,6 +85,12 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
+    final dialogBg =
+        palette.isLight ? palette.cardSurface : const Color(0xFF19100B);
+    final tipBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0xFF231610);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -92,11 +98,11 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
         constraints: const BoxConstraints(maxWidth: 380),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF19100B),
+            color: dialogBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.glassCardBorder, width: 1),
-            boxShadow: const [
-              BoxShadow(color: AppColors.glassCardGlow, blurRadius: 28),
+            border: Border.all(color: palette.glassCardBorder, width: 1),
+            boxShadow: [
+              BoxShadow(color: palette.glassCardGlow, blurRadius: 28),
             ],
           ),
           padding: const EdgeInsets.all(22),
@@ -132,7 +138,7 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.6,
-                            color: AppColors.textAccent,
+                            color: palette.textAccent,
                           ),
                         ),
                         Text(
@@ -140,7 +146,7 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
                           style: GoogleFonts.manrope(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: palette.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -149,7 +155,7 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                    icon: Icon(Icons.close, color: palette.textSecondary, size: 20),
                     onPressed: () => Navigator.of(context).pop(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -167,7 +173,7 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
               ] else if (_error != null) ...[
                 Text(
                   _error!,
-                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+                  style: GoogleFonts.inter(fontSize: 13, color: palette.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
@@ -178,16 +184,16 @@ class _GoalTipDialogContentState extends State<_GoalTipDialogContent> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF231610),
+                    color: tipBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.25)),
+                    border: Border.all(color: palette.subtleBorder),
                   ),
                   child: Text(
                     _tip!,
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       height: 1.5,
-                      color: AppColors.textPrimary,
+                      color: palette.textPrimary,
                     ),
                   ),
                 ),

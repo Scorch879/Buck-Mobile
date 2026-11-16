@@ -149,127 +149,84 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildTabsRow(FinanceSnapshot s) {
-    return Row(
-      children: [
-        // Wallets tab (Figma: #2426:1600)
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _activeTab = _WalletViewTab.wallets),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              height: 38,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: _activeTab == _WalletViewTab.wallets
-                    ? Colors.transparent
-                    : const Color(0x66100B09),
-                border: Border.all(
-                  color: _activeTab == _WalletViewTab.wallets
-                      ? const Color(0xFFFF994A)
-                      : const Color(0x70785B4C),
-                  width: 1,
+    final palette = BuckPalette.of(context);
+    final inactiveBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0x66100B09);
+    final inactiveBorder =
+        palette.isLight ? palette.border : const Color(0x70785B4C);
+    final activeText =
+        palette.isLight ? palette.textAccent : const Color(0xFFFF8E5D);
+
+    Widget tabButton({
+      required _WalletViewTab tab,
+      required String label,
+      required int count,
+    }) {
+      final selected = _activeTab == tab;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _activeTab = tab),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: selected ? Colors.transparent : inactiveBg,
+              border: Border.all(
+                color: selected ? AppColors.headerBorder : inactiveBorder,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? activeText : palette.textSecondary,
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Wallets',
+                const SizedBox(width: 8),
+                Container(
+                  width: 20,
+                  height: 20,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected
+                        ? const Color(0x26FF994A)
+                        : palette.subtleBorder.withValues(alpha: 0.45),
+                  ),
+                  child: Text(
+                    '$count',
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: _activeTab == _WalletViewTab.wallets
-                          ? const Color(0xFFFF8E5D)
-                          : const Color(0xFFC6B5AB),
+                      color: selected ? activeText : palette.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _activeTab == _WalletViewTab.wallets
-                          ? const Color(0x26FF994A)
-                          : const Color(0x33785B4C),
-                    ),
-                    child: Text(
-                      '${s.wallets.length}',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: _activeTab == _WalletViewTab.wallets
-                            ? const Color(0xFFFF8E5D)
-                            : const Color(0xFFC6B5AB),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(width: 8),
+      );
+    }
 
-        // Income tab (Figma: #2426:1604)
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _activeTab = _WalletViewTab.income),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              height: 38,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: _activeTab == _WalletViewTab.income
-                    ? Colors.transparent
-                    : const Color(0x66100B09),
-                border: Border.all(
-                  color: _activeTab == _WalletViewTab.income
-                      ? const Color(0xFFFF994A)
-                      : const Color(0x70785B4C),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Income',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: _activeTab == _WalletViewTab.income
-                          ? const Color(0xFFFF8E5D)
-                          : const Color(0xFFC6B5AB),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _activeTab == _WalletViewTab.income
-                          ? const Color(0x26FF994A)
-                          : const Color(0x33785B4C),
-                    ),
-                    child: Text(
-                      '${s.allIncomes.length}',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: _activeTab == _WalletViewTab.income
-                            ? const Color(0xFFFF8E5D)
-                            : const Color(0xFFC6B5AB),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    return Row(
+      children: [
+        tabButton(
+          tab: _WalletViewTab.wallets,
+          label: 'Wallets',
+          count: s.wallets.length,
+        ),
+        const SizedBox(width: 8),
+        tabButton(
+          tab: _WalletViewTab.income,
+          label: 'Income',
+          count: s.allIncomes.length,
         ),
       ],
     );

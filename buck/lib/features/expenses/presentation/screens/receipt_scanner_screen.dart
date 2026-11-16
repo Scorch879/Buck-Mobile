@@ -108,6 +108,11 @@ class ReceiptScannerScreen extends StatefulWidget {
   /// Can be set to false in widget tests.
   final bool enableLiveCamera;
 
+  /// Test-only hook so widget tests without camera hardware can verify the
+  /// capture-to-expense flow; production code always requires real camera bytes.
+  @visibleForTesting
+  static bool allowSampleFallbackForTesting = false;
+
   const ReceiptScannerScreen({
     super.key,
     this.enableLiveCamera = true,
@@ -133,6 +138,8 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
   List<CameraDescription> _cameras = const [];
   bool _cameraInitialized = false;
   bool _initializingCamera = false;
+  int _cameraEpoch = 0;
+  bool _disposed = false;
   bool _flashOn = false;
   bool _capturing = false;
   Uint8List? _capturedBytes;
@@ -154,50 +161,65 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
 
   @override
   void dispose() {
+    _disposed = true;
     AppLayout.popDarkBarSurface();
     _focusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    _disposeCamera();
+    _disposeCamera(notify: false);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized) return;
-
-    if (state == AppLifecycleState.inactive) {
-      _disposeCamera();
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      if (_cameraController != null || _initializingCamera) {
+        _disposeCamera();
+      }
     } else if (state == AppLifecycleState.resumed && widget.enableLiveCamera) {
-      _initCamera();
+      if (_cameraController == null && !_initializingCamera) {
+        _initCamera();
+      }
     }
   }
 
-  Future<void> _disposeCamera() async {
+  Future<void> _disposeCamera({bool notify = true}) async {
+    _cameraEpoch++;
     final controller = _cameraController;
     _cameraController = null;
+    if (notify && !_disposed && mounted) {
+      setState(() {
+        _cameraInitialized = false;
+        _initializingCamera = false;
+      });
+    } else {
+      _cameraInitialized = false;
+      _initializingCamera = false;
+    }
     if (controller != null) {
       try {
         await controller.dispose();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Camera dispose error: $e');
+      }
     }
   }
 
   Future<void> _initCamera() async {
-    if (_initializingCamera) return;
+    if (_initializingCamera || _disposed) return;
+    final epoch = ++_cameraEpoch;
     setState(() {
       _initializingCamera = true;
     });
 
     try {
-      _cameras = await availableCameras();
+      final cameras = await availableCameras();
+      if (_disposed || !mounted || epoch != _cameraEpoch) return;
+      _cameras = cameras;
       if (_cameras.isEmpty) {
-        if (mounted) {
-          setState(() {
-            _cameraInitialized = false;
-            _initializingCamera = false;
-          });
-        }
+        setState(() {
+          _cameraInitialized = false;
+          _initializingCamera = false;
+        });
         return;
       }
 
@@ -222,7 +244,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       );
 
       await controller.initialize();
-      if (!mounted) {
+      if (_disposed || !mounted || epoch != _cameraEpoch) {
         await controller.dispose();
         return;
       }
@@ -233,9 +255,9 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         _initializingCamera = false;
         _statusMessage = 'Good Lighting — Keep flat & steady.';
       });
-    } catch (_) {
-      // Permission denied, no camera device in dev environment, or unsupported platform
-      if (mounted) {
+    } catch (e) {
+      debugPrint('Camera initialization unavailable: $e');
+      if (!_disposed && mounted && epoch == _cameraEpoch) {
         setState(() {
           _cameraInitialized = false;
           _initializingCamera = false;
@@ -255,8 +277,8 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
         await controller.setFlashMode(
           nextFlash ? FlashMode.torch : FlashMode.off,
         );
-      } catch (_) {
-        // Webcams and some front cameras do not support torch; keep UI state toggled.
+      } catch (e) {
+        debugPrint('Flash toggle unsupported: $e');
       }
     }
   }
@@ -267,7 +289,8 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       final nextIndex = (_cameras.indexOf(currentDesc) + 1) % _cameras.length;
       final nextCamera = _cameras[nextIndex];
       await _disposeCamera();
-      if (!mounted) return;
+      if (_disposed || !mounted) return;
+      final epoch = ++_cameraEpoch;
       setState(() => _initializingCamera = true);
       try {
         final controller = CameraController(
@@ -276,7 +299,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
           enableAudio: false,
         );
         await controller.initialize();
-        if (!mounted) {
+        if (_disposed || !mounted || epoch != _cameraEpoch) {
           await controller.dispose();
           return;
         }
@@ -285,8 +308,9 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
           _cameraInitialized = true;
           _initializingCamera = false;
         });
-      } catch (_) {
-        if (mounted) {
+      } catch (e) {
+        debugPrint('Camera switch failed: $e');
+        if (!_disposed && mounted && epoch == _cameraEpoch) {
           setState(() {
             _cameraInitialized = false;
             _initializingCamera = false;
@@ -455,9 +479,22 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
       }
     }
 
+    if (!fromCamera &&
+        !ReceiptScannerScreen.allowSampleFallbackForTesting) {
+      if (mounted) {
+        setState(() {
+          _capturing = false;
+          _statusMessage =
+              'Camera unavailable — check permission or pick a photo.';
+        });
+      }
+      return;
+    }
+
     final output = await ReceiptOcrProcessor.processReceipt(
       imagePath: photo?.path,
       imageBytes: bytes,
+      allowSampleFallback: ReceiptScannerScreen.allowSampleFallbackForTesting,
     );
 
     if (!mounted) return;

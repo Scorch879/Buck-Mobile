@@ -1,8 +1,13 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/supabase_constants.dart';
 
 class SupabaseService {
+  static final ValueNotifier<String?> initErrorNotifier =
+      ValueNotifier<String?>(null);
+
+  static String? get initError => initErrorNotifier.value;
+
   static bool get isInitialized {
     try {
       return Supabase.instance.isInitialized;
@@ -12,21 +17,22 @@ class SupabaseService {
   }
 
   static Future<void> initialize() async {
-    await Supabase.initialize(
-      url: SupabaseConstants.url,
-      // ignore: deprecated_member_use
-      anonKey: SupabaseConstants.anonKey,
-      authOptions: const FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.pkce,
-      ),
-    );
-
-    if (kIsWeb &&
-        Supabase.instance.client.auth.currentSession == null &&
-        Uri.base.queryParameters.containsKey('code')) {
-      try {
-        await Supabase.instance.client.auth.getSessionFromUrl(Uri.base);
-      } catch (_) {}
+    initErrorNotifier.value = null;
+    try {
+      SupabaseConstants.validate();
+      if (!isInitialized) {
+        await Supabase.initialize(
+          url: SupabaseConstants.url,
+          // ignore: deprecated_member_use
+          anonKey: SupabaseConstants.anonKey,
+          authOptions: const FlutterAuthClientOptions(
+            authFlowType: AuthFlowType.pkce,
+          ),
+        );
+      }
+    } catch (e) {
+      initErrorNotifier.value = e.toString();
+      rethrow;
     }
   }
 

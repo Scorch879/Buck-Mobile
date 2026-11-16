@@ -8,7 +8,6 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/buck_background.dart';
 import '../../../../core/widgets/buck_button.dart';
 import '../../../../core/widgets/buck_text_field.dart';
-import '../../../../core/constants/dev_config.dart';
 import '../../data/auth_service.dart';
 import 'sign_up_screen.dart';
 import 'forgot_password_screen.dart';
@@ -79,7 +78,6 @@ class _SignInScreenState extends State<SignInScreen> {
       setState(() => _isLoading = false);
 
       if (response.user != null) {
-        DevConfig.mockAdminSessionActive.value = false;
         if (widget.onSignInSuccess != null) {
           widget.onSignInSuccess!();
         } else {

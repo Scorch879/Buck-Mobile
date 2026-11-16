@@ -1,10 +1,48 @@
-import '../../ai/data/models/ai_insight_response.dart';
-import 'finance_models.dart';
-import 'finance_repository.dart';
+import 'package:buck/features/ai/data/models/ai_insight_response.dart';
+import 'package:buck/features/finance/data/finance_models.dart';
+import 'package:buck/features/finance/data/finance_repository.dart';
+import 'package:buck/features/goals/data/goal_model.dart';
+import 'package:flutter/material.dart';
 
-/// Pre-populated dev finance source matching the Figma design data.
+/// Sample goal items used only in widget tests.
+const List<GoalItem> sampleSeedGoals = [
+  GoalItem(
+    id: 'emergency-fund',
+    title: 'Emergency Fund',
+    targetDate: 'Target: Dec 2025',
+    status: GoalStatus.onTrack,
+    currentAmount: 45200,
+    targetAmount: 100000,
+    icon: Icons.shield_outlined,
+    themeColor: Color(0xFFFF8E5D),
+    gradientColors: [Color(0xFFFF8E5D), Color(0xFFFF6A13)],
+  ),
+  GoalItem(
+    id: 'vacation-fund',
+    title: 'Vacation Fund',
+    targetDate: 'Target: Aug 2026',
+    status: GoalStatus.inProgress,
+    currentAmount: 12000,
+    targetAmount: 50000,
+    icon: Icons.location_on_outlined,
+    themeColor: Color(0xFF9B72F2),
+    gradientColors: [Color(0xFF9B72F2), Color(0xFF7C3AED)],
+  ),
+  GoalItem(
+    id: 'laptop-fund',
+    title: 'New Laptop',
+    targetDate: 'Target: Mar 2026',
+    status: GoalStatus.inProgress,
+    currentAmount: 18500,
+    targetAmount: 65000,
+    icon: Icons.laptop_mac_outlined,
+    themeColor: Color(0xFF35B9D3),
+    gradientColors: [Color(0xFF35B9D3), Color(0xFF00CCFF)],
+  ),
+];
+
+/// Pre-populated in-memory finance source for automated tests.
 class DevFinanceSource implements FinanceDataSource {
-  /// Simulated Buck AI financial insight report for Dev Mode sessions.
   static AiInsightResponse mockInsight({bool refreshed = false}) {
     final now = DateTime.now();
     return AiInsightResponse(
@@ -13,9 +51,7 @@ class DevFinanceSource implements FinanceDataSource {
       suggestion:
           'Keep daily spending under ₱1,200.00 to stay on track for your Emergency Fund goal.',
       advice:
-          'In Dev Mode, your simulated monthly spending is ₱14,850.00 against ₱45,000.00 in tracked income. '
-          'Your current savings rate is 67%, which comfortably supports your Moderate saving attitude. '
-          'Setting aside ₱2,500.00 per week will keep your Emergency Fund ahead of schedule.',
+          'Your simulated monthly spending is ₱14,850.00 against ₱45,000.00 in tracked income.',
       financialHealthScore: 84,
       priority: 'low',
       focus: 'savings',
@@ -32,22 +68,6 @@ class DevFinanceSource implements FinanceDataSource {
       stale: false,
     );
   }
-
-  /// Simulated Buck AI goal tip for Dev Mode sessions.
-  static String mockGoalTip({String? goalName, double? targetAmount}) {
-    final name =
-        (goalName != null && goalName.isNotEmpty) ? goalName : 'your goal';
-    final amount = (targetAmount != null && targetAmount > 0)
-        ? '₱${(targetAmount / 12).toStringAsFixed(2)}'
-        : 'a fixed amount';
-    return 'To reach $name steadily, automate a monthly transfer of $amount right after payday and keep it in a dedicated savings wallet.';
-  }
-
-  /// Simulated Buck AI advisor chat response for Dev Mode sessions.
-  static const String mockChatReply =
-      'Based on your **Dev Mode** snapshot, your daily spending cap is **₱1,200.00** per day.\n\n'
-      '- Current monthly spend: **₱14,850.00**\n'
-      '- Recommended weekly saving: **₱2,500.00** toward your Emergency Fund';
 
   FinanceData _data = FinanceData(
     profileName: 'Admin',
@@ -74,86 +94,6 @@ class DevFinanceSource implements FinanceDataSource {
         description: 'Grab ride to office',
         spentOn: DateTime.now().subtract(const Duration(days: 1)),
       ),
-      ExpenseRecord(
-        id: 'exp-3',
-        walletId: 'wallet-main',
-        categoryName: 'Shopping',
-        amount: 1250.00,
-        description: 'Groceries at Supermarket',
-        spentOn: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      ExpenseRecord(
-        id: 'exp-4',
-        walletId: 'wallet-main',
-        categoryName: 'Bills & Utilities',
-        amount: 2499.00,
-        description: 'Fiber Internet bill',
-        spentOn: DateTime.now().subtract(const Duration(days: 4)),
-      ),
-      ExpenseRecord(
-        id: 'exp-5',
-        walletId: 'wallet-main',
-        categoryName: 'Food',
-        amount: 1450.00,
-        description: 'Weekend dinner with team',
-        spentOn: DateTime.now().subtract(const Duration(days: 6)),
-      ),
-      ExpenseRecord(
-        id: 'exp-6',
-        walletId: 'wallet-main',
-        categoryName: 'Shopping',
-        amount: 3890.00,
-        description: 'New shoes and work clothes',
-        spentOn: DateTime.now().subtract(const Duration(days: 10)),
-      ),
-      ExpenseRecord(
-        id: 'exp-7',
-        walletId: 'wallet-main',
-        categoryName: 'Bills & Utilities',
-        amount: 4850.00,
-        description: 'Meralco electricity bill',
-        spentOn: DateTime.now().subtract(const Duration(days: 14)),
-      ),
-      ExpenseRecord(
-        id: 'exp-8',
-        walletId: 'wallet-main',
-        categoryName: 'Transportation',
-        amount: 2200.00,
-        description: 'Shell gasoline full tank',
-        spentOn: DateTime.now().subtract(const Duration(days: 18)),
-      ),
-      ExpenseRecord(
-        id: 'exp-9',
-        walletId: 'wallet-main',
-        categoryName: 'Others',
-        amount: 1500.00,
-        description: 'Fitness gym monthly pass',
-        spentOn: DateTime.now().subtract(const Duration(days: 22)),
-      ),
-      ExpenseRecord(
-        id: 'exp-10',
-        walletId: 'wallet-main',
-        categoryName: 'Shopping',
-        amount: 18500.00,
-        description: 'External monitor for workstation',
-        spentOn: DateTime.now().subtract(const Duration(days: 40)),
-      ),
-      ExpenseRecord(
-        id: 'exp-11',
-        walletId: 'wallet-main',
-        categoryName: 'Bills & Utilities',
-        amount: 12500.00,
-        description: 'Quarterly insurance premium',
-        spentOn: DateTime.now().subtract(const Duration(days: 55)),
-      ),
-      ExpenseRecord(
-        id: 'exp-12',
-        walletId: 'wallet-main',
-        categoryName: 'Others',
-        amount: 8900.00,
-        description: 'Annual dental checkup & clinic',
-        spentOn: DateTime.now().subtract(const Duration(days: 70)),
-      ),
     ],
     incomes: [
       IncomeRecord(
@@ -163,20 +103,13 @@ class DevFinanceSource implements FinanceDataSource {
         amount: 45000.00,
         receivedOn: DateTime(DateTime.now().year, DateTime.now().month, 15),
       ),
-      IncomeRecord(
-        id: 'inc-2',
-        walletId: 'wallet-savings',
-        source: 'Freelance',
-        amount: 12000.00,
-        receivedOn: DateTime(DateTime.now().year, DateTime.now().month, 5),
-      ),
     ],
     advisories: const [
       AiAdvisory(
         id: 'adv-1',
         title: 'Spending Pattern Analysis',
         suggestion: 'You spent 12% less on dining this week. Keep it up!',
-        advice: 'Allocating the surplus ₱1,200 to your Emergency Fund will help reach your goal 2 weeks faster.',
+        advice: 'Allocating the surplus ₱1,200 will help reach your goal faster.',
       ),
     ],
   );

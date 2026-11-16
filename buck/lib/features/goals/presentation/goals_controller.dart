@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../data/goal_model.dart';
 import '../data/goals_repository.dart';
@@ -8,6 +10,8 @@ class GoalsController extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   void Function()? _stopWatching;
+  Timer? _debounce;
+  bool _disposed = false;
 
   GoalsController({
     GoalsDataSource? repository,
@@ -15,50 +19,16 @@ class GoalsController extends ChangeNotifier {
   })  : _repository = repository,
         _goals = initialGoals != null
             ? List<GoalItem>.from(initialGoals)
-            : (repository != null
-                ? <GoalItem>[]
-                : List<GoalItem>.from(_defaultInitialGoals));
-
-  static const List<GoalItem> _defaultInitialGoals = [
-    GoalItem(
-      id: 'emergency-fund',
-      title: 'Emergency Fund',
-      targetDate: 'Target: Dec 2025',
-      status: GoalStatus.onTrack,
-      currentAmount: 45200,
-      targetAmount: 100000,
-      icon: Icons.shield_outlined,
-      themeColor: Color(0xFFFF8E5D),
-      gradientColors: [Color(0xFFFF8E5D), Color(0xFFFF6A13)],
-    ),
-    GoalItem(
-      id: 'vacation-fund',
-      title: 'Vacation Fund',
-      targetDate: 'Target: Jun 2025',
-      status: GoalStatus.completed,
-      currentAmount: 30000,
-      targetAmount: 30000,
-      icon: Icons.location_on_outlined,
-      themeColor: Color(0xFF9B72F2),
-      gradientColors: [Color(0xFF9B72F2), Color(0xFF7C3AED)],
-    ),
-    GoalItem(
-      id: 'new-laptop',
-      title: 'New Laptop',
-      targetDate: 'Target: Mar 2026',
-      status: GoalStatus.inProgress,
-      currentAmount: 18500,
-      targetAmount: 65000,
-      icon: Icons.laptop_mac_outlined,
-      themeColor: Color(0xFF35B9D3),
-      gradientColors: [Color(0xFF35B9D3), Color(0xFF00CCFF)],
-    ),
-  ];
+            : <GoalItem>[];
 
   bool get hasRepository => _repository != null;
   List<GoalItem> get goals => List.unmodifiable(_goals);
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
 
   /// Starts live database sync and real-time subscription.
   void start() {
@@ -66,31 +36,39 @@ class GoalsController extends ChangeNotifier {
     refresh();
     _stopWatching?.call();
     try {
-      _stopWatching = _repository.watch(refresh);
-    } catch (_) {
-      // Realtime subscription is best-effort
+      _stopWatching = _repository.watch(_scheduleRefresh);
+    } catch (e) {
+      debugPrint('Goals realtime unavailable: $e');
     }
+  }
+
+  void _scheduleRefresh() {
+    if (_disposed) return;
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), refresh);
   }
 
   /// Reloads goals from Supabase (or data source).
   Future<void> refresh() async {
-    if (_repository == null) return;
+    if (_repository == null || _disposed) return;
     try {
       _isLoading = true;
       _error = null;
-      notifyListeners();
+      _notify();
 
       final loaded = await _repository.loadGoals();
+      if (_disposed) return;
       _goals = loaded;
     } catch (e) {
+      if (_disposed) return;
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
   }
 
-  /// Add a brand new goal (persists to Supabase if repository available).
+  /// Add a brand new goal (persists atomically via Supabase if available).
   Future<GoalItem> addGoal({
     required String title,
     required double targetAmount,
@@ -112,12 +90,14 @@ class GoalsController extends ChangeNotifier {
         gradientColors: gradientColors,
         walletId: walletId,
       );
-      _goals = [saved, ..._goals];
-      notifyListeners();
+      if (!_disposed) {
+        _goals = [saved, ..._goals];
+        _notify();
+      }
       return saved;
     }
 
-    final status = initialAmount >= targetAmount
+    final status = initialAmount >= targetAmount && targetAmount > 0
         ? GoalStatus.completed
         : GoalStatus.inProgress;
 
@@ -133,8 +113,10 @@ class GoalsController extends ChangeNotifier {
       gradientColors: gradientColors,
     );
 
-    _goals = [newGoal, ..._goals];
-    notifyListeners();
+    if (!_disposed) {
+      _goals = [newGoal, ..._goals];
+      _notify();
+    }
     return newGoal;
   }
 
@@ -152,7 +134,7 @@ class GoalsController extends ChangeNotifier {
         amount: amount,
         walletId: walletId,
       );
-      if (!ok) return false;
+      if (!ok || _disposed) return ok;
     }
 
     final index = _goals.indexWhere((g) => g.id == goalId);
@@ -161,29 +143,25 @@ class GoalsController extends ChangeNotifier {
     final current = _goals[index];
     final updatedCurrent = current.currentAmount + amount;
 
-    _goals[index] = current.copyWith(
-      currentAmount: updatedCurrent,
-    );
-
-    notifyListeners();
+    _goals[index] = current.copyWith(currentAmount: updatedCurrent);
+    _notify();
     return true;
   }
 
-  /// Delete a goal.
+  /// Delete a goal cleanly, rethrowing persistence failures instead of hiding them.
   Future<void> deleteGoal(String goalId) async {
     if (_repository != null) {
-      try {
-        await _repository.deleteGoal(goalId);
-      } catch (_) {
-        // Local removal fallback
-      }
+      await _repository.deleteGoal(goalId);
     }
+    if (_disposed) return;
     _goals.removeWhere((g) => g.id == goalId);
-    notifyListeners();
+    _notify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    _debounce?.cancel();
     _stopWatching?.call();
     super.dispose();
   }

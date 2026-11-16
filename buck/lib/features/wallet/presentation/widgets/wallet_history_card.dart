@@ -107,6 +107,15 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
     }).toList();
 
     final palette = BuckPalette.of(context);
+    final controlBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0xFF24170F);
+    final controlBorder =
+        palette.isLight ? palette.border : const Color(0x70785B4C);
+    final incomeAccent =
+        palette.isLight ? const Color(0xFF00796B) : const Color(0xFF56D3C7);
+    final expenseAccent =
+        palette.isLight ? const Color(0xFFC62828) : const Color(0xFFFF6B6B);
+
     return Container(
       decoration: BoxDecoration(
         color: palette.isLight
@@ -151,7 +160,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFFC6B5AB),
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -166,20 +175,20 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                 child: Container(
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF24170F),
+                    color: controlBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x70785B4C),
+                      color: controlBorder,
                       width: 1,
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.search,
                         size: 16,
-                        color: Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -187,13 +196,13 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                           onChanged: (val) => setState(() => _searchQuery = val.trim()),
                           style: GoogleFonts.inter(
                             fontSize: 11,
-                            color: const Color(0xFFFFF7EE),
+                            color: palette.textPrimary,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search history...',
                             hintStyle: GoogleFonts.inter(
                               fontSize: 11,
-                              color: const Color(0xFFC6B5AB),
+                              color: palette.textSecondary,
                             ),
                             border: InputBorder.none,
                             isDense: true,
@@ -210,10 +219,10 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
               // Filter dropdown button (Figma: #2426:1639)
               PopupMenuButton<HistoryFilter>(
                 onSelected: (filter) => setState(() => _filter = filter),
-                color: const Color(0xFF24170F),
+                color: controlBg,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Color(0x70785B4C)),
+                  side: BorderSide(color: controlBorder),
                 ),
                 itemBuilder: (ctx) => [
                   for (final opt in HistoryFilter.values)
@@ -225,7 +234,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                           fontSize: 12,
                           color: _filter == opt
                               ? AppColors.primaryOrange
-                              : const Color(0xFFFFF7EE),
+                              : palette.textPrimary,
                           fontWeight: _filter == opt ? FontWeight.w700 : FontWeight.w400,
                         ),
                       ),
@@ -235,10 +244,10 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                   height: 36,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF24170F),
+                    color: controlBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x70785B4C),
+                      color: controlBorder,
                       width: 1,
                     ),
                   ),
@@ -250,14 +259,14 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFFFFF7EE),
+                          color: palette.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 5),
-                      const Icon(
+                      Icon(
                         Icons.keyboard_arrow_down,
                         size: 14,
-                        color: Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                     ],
                   ),
@@ -269,7 +278,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
 
           // 3. Activity Items or Empty State (Figma: #2426:1643)
           if (filtered.isEmpty)
-            _buildEmptyState()
+            _buildEmptyState(palette)
           else
             ListView.separated(
               shrinkWrap: true,
@@ -279,16 +288,18 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
               itemBuilder: (context, index) {
                 final item = filtered[index];
                 final iconColor = item.isIncome
-                    ? const Color(0xFF56D3C7)
+                    ? incomeAccent
                     : _categoryColor(item.categoryKey);
 
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF19100B),
+                    color: palette.isLight
+                        ? palette.surfaceElevated
+                        : const Color(0xFF19100B),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: const Color(0x33785B4C),
+                      color: palette.subtleBorder,
                       width: 1,
                     ),
                   ),
@@ -326,7 +337,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                               style: GoogleFonts.manrope(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFFFFF7EE),
+                                color: palette.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -336,7 +347,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                               _dateFormat.format(item.date),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                color: const Color(0xFFC6B5AB),
+                                color: palette.textSecondary,
                               ),
                             ),
                           ],
@@ -349,9 +360,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                         style: GoogleFonts.manrope(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: item.isIncome
-                              ? const Color(0xFF56D3C7)
-                              : const Color(0xFFFF6B6B),
+                          color: item.isIncome ? incomeAccent : expenseAccent,
                         ),
                       ),
                     ],
@@ -364,12 +373,11 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuckPalette palette) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          // Empty history symbol (Figma: #2426:1644)
           Container(
             width: 50,
             height: 50,
@@ -381,10 +389,10 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                 width: 1,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.receipt_long_outlined,
               size: 26,
-              color: Color(0xFFFF8E5D),
+              color: palette.isLight ? palette.textAccent : const Color(0xFFFF8E5D),
             ),
           ),
           const SizedBox(width: 12),
@@ -397,7 +405,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                   style: GoogleFonts.manrope(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFFF7EE),
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -405,7 +413,7 @@ class _WalletHistoryCardState extends State<WalletHistoryCard> {
                   'Your wallet activity will appear here.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: const Color(0xFFC6B5AB),
+                    color: palette.textSecondary,
                   ),
                 ),
               ],

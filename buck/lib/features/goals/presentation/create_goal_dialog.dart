@@ -91,6 +91,7 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
   }
 
   Future<void> _pickDate() async {
+    final palette = BuckPalette.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: _targetDate,
@@ -98,10 +99,15 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
       lastDate: DateTime(2040),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.primaryOrange,
-            surface: AppColors.cardSurfaceAlt,
-          ),
+          colorScheme: palette.isLight
+              ? ColorScheme.light(
+                  primary: AppColors.primaryOrange,
+                  surface: palette.cardSurface,
+                )
+              : const ColorScheme.dark(
+                  primary: AppColors.primaryOrange,
+                  surface: AppColors.cardSurfaceAlt,
+                ),
         ),
         child: child!,
       ),
@@ -142,6 +148,10 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = BuckPalette.of(context);
+    final fieldFill =
+        palette.isLight ? palette.inputBg : AppColors.cardSurfaceAlt;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -149,11 +159,11 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
         constraints: const BoxConstraints(maxWidth: 400),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.glassCardBg,
+            color: palette.glassCardBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.glassCardBorder, width: 1),
-            boxShadow: const [
-              BoxShadow(color: AppColors.glassCardGlow, blurRadius: 28),
+            border: Border.all(color: palette.glassCardBorder, width: 1),
+            boxShadow: [
+              BoxShadow(color: palette.glassCardGlow, blurRadius: 28),
             ],
           ),
           child: SingleChildScrollView(
@@ -174,7 +184,7 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
                             style: GoogleFonts.manrope(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFFFFF7EE),
+                              color: palette.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -183,14 +193,14 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
                             style: GoogleFonts.manrope(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: const Color(0xFFC6B5AB),
+                              color: palette.textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                      icon: Icon(Icons.close, color: palette.textSecondary, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -203,13 +213,13 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4A100B),
+                      color: palette.dangerSurface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFEA4335).withValues(alpha: 0.6)),
+                      border: Border.all(color: palette.dangerBorder),
                     ),
                     child: Text(
                       _error!,
-                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFFFD1D1)),
+                      style: GoogleFonts.inter(fontSize: 12, color: palette.dangerTitle),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -217,43 +227,47 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
 
                 // Goal Name
                 _buildField(
+                  palette: palette,
                   label: 'Goal Name',
                   child: TextField(
                     controller: _titleController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: _inputDecoration(hint: 'e.g. Car Downpayment'),
+                    style: TextStyle(color: palette.textPrimary, fontSize: 14),
+                    decoration: _inputDecoration(palette: palette, fillColor: fieldFill, hint: 'e.g. Car Downpayment'),
                   ),
                 ),
                 const SizedBox(height: 14),
 
                 // Target Amount
                 _buildField(
+                  palette: palette,
                   label: 'Target Amount (₱)',
                   child: TextField(
                     controller: _targetController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: _inputDecoration(hint: 'e.g. 50,000'),
+                    style: TextStyle(color: palette.textPrimary, fontSize: 14),
+                    decoration: _inputDecoration(palette: palette, fillColor: fieldFill, hint: 'e.g. 50,000'),
                   ),
                 ),
                 const SizedBox(height: 14),
 
                 // Initial Saved (Optional)
                 _buildField(
+                  palette: palette,
                   label: 'Already Saved (Optional ₱)',
                   child: TextField(
                     controller: _initialController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: _inputDecoration(hint: 'e.g. 5,000 (0 if starting fresh)'),
+                    style: TextStyle(color: palette.textPrimary, fontSize: 14),
+                    decoration: _inputDecoration(palette: palette, fillColor: fieldFill, hint: 'e.g. 5,000 (0 if starting fresh)'),
                   ),
                 ),
                 const SizedBox(height: 14),
 
                 // Target Date
                 _buildField(
+                  palette: palette,
                   label: 'Target Date',
                   child: GestureDetector(
                     onTap: _pickDate,
@@ -261,16 +275,16 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
                       height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: AppColors.cardSurfaceAlt,
+                        color: fieldFill,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.inputBorder, width: 1.2),
+                        border: Border.all(color: palette.border, width: 1.2),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             DateFormat('MMMM yyyy').format(_targetDate),
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            style: TextStyle(color: palette.textPrimary, fontSize: 14),
                           ),
                           const Icon(Icons.calendar_today_outlined, color: AppColors.primaryOrange, size: 18),
                         ],
@@ -282,6 +296,7 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
 
                 // Category Preset Selector
                 _buildField(
+                  palette: palette,
                   label: 'Theme & Category',
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -306,14 +321,14 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
                               selected: _selectedPreset == preset,
                               onSelected: (_) => setState(() => _selectedPreset = preset),
                               selectedColor: preset.color,
-                              backgroundColor: AppColors.cardSurfaceAlt,
+                              backgroundColor: fieldFill,
                               labelStyle: TextStyle(
-                                color: _selectedPreset == preset ? Colors.black : Colors.white,
+                                color: _selectedPreset == preset ? Colors.black : palette.textPrimary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
                               side: BorderSide(
-                                color: _selectedPreset == preset ? preset.color : AppColors.inputBorder,
+                                color: _selectedPreset == preset ? preset.color : palette.border,
                               ),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
@@ -368,7 +383,11 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
     );
   }
 
-  Widget _buildField({required String label, required Widget child}) {
+  Widget _buildField({
+    required BuckPalette palette,
+    required String label,
+    required Widget child,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,7 +396,7 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
           style: GoogleFonts.inter(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFFC6B5AB),
+            color: palette.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
@@ -386,20 +405,24 @@ class _CreateGoalDialogState extends State<CreateGoalDialog> {
     );
   }
 
-  InputDecoration _inputDecoration({required String hint}) {
+  InputDecoration _inputDecoration({
+    required BuckPalette palette,
+    required Color fillColor,
+    required String hint,
+  }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+      hintStyle: TextStyle(color: palette.textSecondary, fontSize: 14),
       filled: true,
-      fillColor: AppColors.cardSurfaceAlt,
+      fillColor: fillColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.2),
+        borderSide: BorderSide(color: palette.border, width: 1.2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.2),
+        borderSide: BorderSide(color: palette.border, width: 1.2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

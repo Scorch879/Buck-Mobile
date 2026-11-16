@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'support/dev_finance_source.dart';
 import 'support/fake_finance_source.dart';
 import 'package:buck/features/finance/data/finance_repository.dart';
 import 'package:buck/features/finance/presentation/finance_controller.dart';
@@ -23,7 +24,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final controller = GoalsController();
+    final controller = GoalsController(initialGoals: sampleSeedGoals);
     String? triggeredAction;
 
     await tester.pumpWidget(
@@ -112,11 +113,15 @@ void main() {
     addTearDown(tester.view.reset);
 
     final controller = FinanceController(fake);
-    addTearDown(controller.dispose);
+    final goals = GoalsController(initialGoals: sampleSeedGoals);
+    addTearDown(() {
+      controller.dispose();
+      goals.dispose();
+    });
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MainShell(financeController: controller),
+        home: MainShell(financeController: controller, goalsController: goals),
       ),
     );
     await tester.pumpAndSettle();
@@ -167,6 +172,77 @@ void main() {
       findsOneWidget,
     );
   });
+
+  test('GoalsController does not notify after dispose and rethrows deleteGoal failures', () async {
+    final repo = _FailingDeleteGoalsRepo();
+    final controller = GoalsController(repository: repo);
+
+    await controller.refresh();
+    expect(controller.goals, hasLength(1));
+
+    await expectLater(
+      () => controller.deleteGoal('g1'),
+      throwsA(isA<StateError>()),
+    );
+    expect(controller.goals, hasLength(1));
+
+    // Start in-flight refresh then dispose immediately; must not throw on completion.
+    repo.delayLoad = const Duration(milliseconds: 20);
+    final refreshFuture = controller.refresh();
+    controller.dispose();
+    await refreshFuture;
+  });
+}
+
+class _FailingDeleteGoalsRepo implements GoalsDataSource {
+  Duration delayLoad = Duration.zero;
+
+  @override
+  Future<List<GoalItem>> loadGoals() async {
+    if (delayLoad > Duration.zero) await Future<void>.delayed(delayLoad);
+    return const [
+      GoalItem(
+        id: 'g1',
+        title: 'Save Up',
+        targetDate: 'Target: Dec 2026',
+        status: GoalStatus.inProgress,
+        currentAmount: 1000,
+        targetAmount: 5000,
+        icon: Icons.savings_outlined,
+        themeColor: Color(0xFFFF8E5D),
+        gradientColors: [Color(0xFFFF8E5D), Color(0xFFFF6A13)],
+      ),
+    ];
+  }
+
+  @override
+  Future<GoalItem> addGoal({
+    required String title,
+    required double targetAmount,
+    required double initialAmount,
+    required String targetDate,
+    required IconData icon,
+    required Color themeColor,
+    required List<Color> gradientColors,
+    String? walletId,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> allocateFunds({
+    required String goalId,
+    required double amount,
+    String? walletId,
+  }) async =>
+      false;
+
+  @override
+  Future<void> deleteGoal(String goalId) async {
+    throw StateError('DB delete failed');
+  }
+
+  @override
+  void Function() watch(void Function() onChange) => () {};
 }
 
 class _EmptyGoalsRepository implements GoalsDataSource {

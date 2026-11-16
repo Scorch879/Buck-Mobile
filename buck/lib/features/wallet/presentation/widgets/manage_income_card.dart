@@ -59,6 +59,13 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
     });
 
     final palette = BuckPalette.of(context);
+    final controlBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0xFF24170F);
+    final controlBorder =
+        palette.isLight ? palette.border : const Color(0x70785B4C);
+    final incomeAccent =
+        palette.isLight ? const Color(0xFF00796B) : const Color(0xFF56D3C7);
+
     return Container(
       decoration: BoxDecoration(
         color: palette.isLight
@@ -91,7 +98,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                   style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFD5E2F5),
+                    color: palette.cardTitle,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -103,7 +110,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFFC6B5AB),
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -117,20 +124,20 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                 child: Container(
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF24170F),
+                    color: controlBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x70785B4C),
+                      color: controlBorder,
                       width: 1,
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.search,
                         size: 16,
-                        color: Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -138,13 +145,13 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                           onChanged: (val) => setState(() => _searchQuery = val.trim()),
                           style: GoogleFonts.inter(
                             fontSize: 11,
-                            color: const Color(0xFFFFF7EE),
+                            color: palette.textPrimary,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search income...',
                             hintStyle: GoogleFonts.inter(
                               fontSize: 11,
-                              color: const Color(0xFFC6B5AB),
+                              color: palette.textSecondary,
                             ),
                             border: InputBorder.none,
                             isDense: true,
@@ -160,10 +167,10 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
 
               PopupMenuButton<IncomeSortOption>(
                 onSelected: (opt) => setState(() => _sortOption = opt),
-                color: const Color(0xFF24170F),
+                color: controlBg,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Color(0x70785B4C)),
+                  side: BorderSide(color: controlBorder),
                 ),
                 itemBuilder: (ctx) => [
                   for (final opt in IncomeSortOption.values)
@@ -175,7 +182,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                           fontSize: 12,
                           color: _sortOption == opt
                               ? AppColors.primaryOrange
-                              : const Color(0xFFFFF7EE),
+                              : palette.textPrimary,
                           fontWeight: _sortOption == opt ? FontWeight.w700 : FontWeight.w400,
                         ),
                       ),
@@ -185,10 +192,10 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                   height: 36,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF24170F),
+                    color: controlBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x70785B4C),
+                      color: controlBorder,
                       width: 1,
                     ),
                   ),
@@ -200,14 +207,14 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFFFFF7EE),
+                          color: palette.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 5),
-                      const Icon(
+                      Icon(
                         Icons.keyboard_arrow_down,
                         size: 14,
-                        color: Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                     ],
                   ),
@@ -234,10 +241,10 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                         width: 1,
                       ),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_downward,
                       size: 26,
-                      color: Color(0xFF56D3C7),
+                      color: incomeAccent,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -250,7 +257,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                           style: GoogleFonts.manrope(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFFF7EE),
+                            color: palette.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -258,7 +265,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                           'Add an income deposit to start tracking inflows.',
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            color: const Color(0xFFC6B5AB),
+                            color: palette.textSecondary,
                           ),
                         ),
                       ],
@@ -279,10 +286,12 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF19100B),
+                    color: palette.isLight
+                        ? palette.surfaceElevated
+                        : const Color(0xFF19100B),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: const Color(0x33785B4C),
+                      color: palette.subtleBorder,
                       width: 1,
                     ),
                   ),
@@ -292,17 +301,17 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: const Color(0x2456D3C7),
+                          color: incomeAccent.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0x5556D3C7),
+                            color: incomeAccent.withValues(alpha: 0.35),
                             width: 1,
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_downward,
                           size: 20,
-                          color: Color(0xFF56D3C7),
+                          color: incomeAccent,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -315,7 +324,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                               style: GoogleFonts.manrope(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFFFFF7EE),
+                                color: palette.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -323,7 +332,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                               _dateFormat.format(income.receivedOn),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                color: const Color(0xFFC6B5AB),
+                                color: palette.textSecondary,
                               ),
                             ),
                           ],
@@ -334,7 +343,7 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                         style: GoogleFonts.manrope(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF56D3C7),
+                          color: incomeAccent,
                         ),
                       ),
                     ],
@@ -390,10 +399,10 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                       height: 36,
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF24170F),
+                        color: controlBg,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: const Color(0xFFFF994A),
+                          color: AppColors.headerBorder,
                           width: 1,
                         ),
                       ),
@@ -412,7 +421,9 @@ class _ManageIncomeCardState extends State<ManageIncomeCard> {
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFFFF994A),
+                              color: palette.isLight
+                                  ? palette.textAccent
+                                  : AppColors.headerBorder,
                             ),
                           ),
                         ],

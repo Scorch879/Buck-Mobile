@@ -577,6 +577,7 @@ class ReceiptOcrProcessor {
     String? imagePath,
     Uint8List? imageBytes,
     String? sourceName,
+    bool allowSampleFallback = false,
   }) async {
     final stopwatch = Stopwatch()..start();
 
@@ -593,7 +594,7 @@ class ReceiptOcrProcessor {
     final bool usedNative = nativeText != null && nativeText.trim().isNotEmpty;
     final bool hasImageBytes = imageBytes != null && imageBytes.isNotEmpty;
 
-    if (!usedNative && hasImageBytes) {
+    if (!usedNative && (hasImageBytes || !allowSampleFallback)) {
       stopwatch.stop();
       final cleanLabel = _cleanSourceLabel(sourceName);
       return ReceiptPipelineOutput(
@@ -613,8 +614,9 @@ class ReceiptOcrProcessor {
           sharpnessVariance: quality?.sharpnessVariance ?? 0,
           foregroundRatio: quality?.foregroundRatio ?? 0,
           isLowQuality: true,
-          qualityWarning:
-              'Could not read receipt text clearly — retake with flash or enter details manually.',
+          qualityWarning: hasImageBytes
+              ? 'Could not read receipt text clearly — retake with flash or enter details manually.'
+              : 'No receipt image captured — retake photo or pick from gallery.',
         ),
         processingTimeMs: stopwatch.elapsedMilliseconds,
         usedNativeOcr: false,

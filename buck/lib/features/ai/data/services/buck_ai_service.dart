@@ -4,11 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../../../../core/constants/buck_ai_constants.dart';
-import '../../../../core/constants/dev_config.dart';
 import '../../../../core/constants/supabase_constants.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../expenses/data/receipt_ocr_processor.dart';
-import '../../../finance/data/dev_finance_source.dart';
 import '../../../finance/data/finance_models.dart';
 import '../../../goals/data/goal_model.dart';
 import '../models/ai_chat_message.dart';
@@ -115,8 +113,6 @@ class BuckAiService {
             streamTimeout ?? requestTimeout ?? _defaultStreamTimeout,
         _useCandidateEndpoints = useCandidateEndpoints,
         _liveSupabaseContextLoader = liveSupabaseContextLoader;
-
-  bool get _isDevMockSession => DevConfig.mockAdminSessionActive.value;
 
   bool get _shouldUseCandidateEndpoints =>
       _useCandidateEndpoints ?? SupabaseService.isInitialized;
@@ -375,10 +371,6 @@ class BuckAiService {
   /// Set [refresh] to true to force Gemini regeneration (subject to rate limit cooldowns).
   Future<AiInsightResponse> getInsight({bool refresh = false, String? token}) async {
     final effectiveToken = await _resolveToken(overrideToken: token);
-    if (effectiveToken == null && _isDevMockSession) {
-      if (refresh) lastRegeneratedAt = DateTime.now();
-      return DevFinanceSource.mockInsight(refreshed: refresh);
-    }
 
     final advisorPath = refresh ? '/advisor/insight?refresh=true' : '/advisor/insight';
     final primaryUrl = refresh
@@ -412,9 +404,6 @@ class BuckAiService {
   /// Fetches saved advisory history.
   Future<AiInsightResponse?> getHistory({String? token}) async {
     final effectiveToken = await _resolveToken(overrideToken: token);
-    if (effectiveToken == null && _isDevMockSession) {
-      return DevFinanceSource.mockInsight();
-    }
 
     try {
       return await _sendJsonWithFailover<AiInsightResponse>(
@@ -456,11 +445,6 @@ class BuckAiService {
         descriptions.map(ReceiptOcrProcessor.sanitizePii).toList();
 
     final effectiveToken = await _resolveToken(overrideToken: token);
-    if (effectiveToken == null && _isDevMockSession) {
-      return sanitizedDescriptions
-          .map((d) => mapToMobileCategory('', fallbackDescription: d))
-          .toList();
-    }
 
     final payload = jsonEncode({
       'kind': kind,
@@ -508,12 +492,6 @@ class BuckAiService {
     String? token,
   }) async {
     final effectiveToken = await _resolveToken(overrideToken: token);
-    if (effectiveToken == null && _isDevMockSession) {
-      return DevFinanceSource.mockGoalTip(
-        goalName: goalName,
-        targetAmount: targetAmount,
-      );
-    }
 
     final body = <String, dynamic>{};
     if (goalId != null && goalId.isNotEmpty) body['goalId'] = goalId;
@@ -597,19 +575,6 @@ class BuckAiService {
         try {
           final effectiveToken = await _resolveToken(overrideToken: token);
           if (isCancelled || controller.isClosed) return;
-
-          if (effectiveToken == null && _isDevMockSession) {
-            for (final word in DevFinanceSource.mockChatReply.split(' ')) {
-              if (isCancelled || controller.isClosed) return;
-              await Future<void>.delayed(const Duration(milliseconds: 15));
-              if (isCancelled || controller.isClosed) return;
-              controller.add('$word ');
-            }
-            if (!isCancelled && !controller.isClosed) {
-              await controller.close();
-            }
-            return;
-          }
 
           final endpoints = _endpointsFor(
             '/advisor/chat',

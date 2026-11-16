@@ -59,6 +59,15 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
     });
 
     final palette = BuckPalette.of(context);
+    final controlBg =
+        palette.isLight ? palette.surfaceElevated : const Color(0xFF24170F);
+    final controlBorder =
+        palette.isLight ? palette.border : const Color(0x70785B4C);
+    final activeCyan =
+        palette.isLight ? const Color(0xFF00796B) : const Color(0xFF56D3C7);
+    final accentAmount =
+        palette.isLight ? palette.textAccent : const Color(0xFFFF8E5D);
+
     return Container(
       decoration: BoxDecoration(
         color: palette.isLight
@@ -91,7 +100,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                   style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFD5E2F5),
+                    color: palette.cardTitle,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -103,7 +112,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFFC6B5AB),
+                  color: palette.textSecondary,
                 ),
               ),
             ],
@@ -118,20 +127,20 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                 child: Container(
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF24170F),
+                    color: controlBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x70785B4C),
+                      color: controlBorder,
                       width: 1,
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.search,
                         size: 16,
-                        color: Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -139,13 +148,13 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                           onChanged: (val) => setState(() => _searchQuery = val.trim()),
                           style: GoogleFonts.inter(
                             fontSize: 11,
-                            color: const Color(0xFFFFF7EE),
+                            color: palette.textPrimary,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search wallets...',
                             hintStyle: GoogleFonts.inter(
                               fontSize: 11,
-                              color: const Color(0xFFC6B5AB),
+                              color: palette.textSecondary,
                             ),
                             border: InputBorder.none,
                             isDense: true,
@@ -162,10 +171,10 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
               // Sort dropdown button
               PopupMenuButton<WalletSortOption>(
                 onSelected: (opt) => setState(() => _sortOption = opt),
-                color: const Color(0xFF24170F),
+                color: controlBg,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Color(0x70785B4C)),
+                  side: BorderSide(color: controlBorder),
                 ),
                 itemBuilder: (ctx) => [
                   for (final opt in WalletSortOption.values)
@@ -177,7 +186,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                           fontSize: 12,
                           color: _sortOption == opt
                               ? AppColors.primaryOrange
-                              : const Color(0xFFFFF7EE),
+                              : palette.textPrimary,
                           fontWeight: _sortOption == opt ? FontWeight.w700 : FontWeight.w400,
                         ),
                       ),
@@ -187,10 +196,10 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                   height: 36,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF24170F),
+                    color: controlBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0x70785B4C),
+                      color: controlBorder,
                       width: 1,
                     ),
                   ),
@@ -202,14 +211,14 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFFFFF7EE),
+                          color: palette.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 5),
-                      const Icon(
+                      Icon(
                         Icons.keyboard_arrow_down,
                         size: 14,
-                        color: Color(0xFFC6B5AB),
+                        color: palette.textSecondary,
                       ),
                     ],
                   ),
@@ -221,7 +230,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
 
           // 3. Wallets List or Empty State (Figma: #2426:1621)
           if (filtered.isEmpty)
-            _buildEmptyState()
+            _buildEmptyState(palette)
           else
             ListView.separated(
               shrinkWrap: true,
@@ -239,13 +248,17 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: isActive
-                          ? const Color(0x2EFF994A)
-                          : const Color(0xFF19100B),
+                          ? (palette.isLight
+                              ? const Color(0xFFFFEFE0)
+                              : const Color(0x2EFF994A))
+                          : (palette.isLight
+                              ? palette.surfaceElevated
+                              : const Color(0xFF19100B)),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isActive
-                            ? const Color(0xFFFF994A)
-                            : const Color(0x33785B4C),
+                            ? AppColors.headerBorder
+                            : palette.subtleBorder,
                         width: 1,
                       ),
                     ),
@@ -256,17 +269,17 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: const Color(0x17FF994A), // rgba(255, 153, 74, 0.09)
+                            color: const Color(0x17FF994A),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0x33FF994A), // rgba(255, 153, 74, 0.2)
+                              color: const Color(0x33FF994A),
                               width: 1,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.account_balance_wallet_outlined,
                             size: 20,
-                            color: Color(0xFFFF8E5D),
+                            color: accentAmount,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -281,7 +294,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                                 style: GoogleFonts.manrope(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFFFF7EE),
+                                  color: palette.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -292,7 +305,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFFF8E5D),
+                                  color: accentAmount,
                                 ),
                               ),
                             ],
@@ -304,24 +317,24 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0x3356D3C7),
+                              color: activeCyan.withValues(alpha: 0.16),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: const Color(0xFF56D3C7),
+                                color: activeCyan,
                                 width: 1,
                               ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.check, size: 12, color: Color(0xFF56D3C7)),
+                                Icon(Icons.check, size: 12, color: activeCyan),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Active',
                                   style: GoogleFonts.inter(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF56D3C7),
+                                    color: activeCyan,
                                   ),
                                 ),
                               ],
@@ -340,7 +353,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFFC6B5AB),
+                                color: palette.textSecondary,
                               ),
                             ),
                           ),
@@ -386,12 +399,11 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuckPalette palette) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          // Empty symbol (Figma: #2426:1622)
           Container(
             width: 50,
             height: 50,
@@ -403,10 +415,10 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                 width: 1,
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.account_balance_wallet_outlined,
               size: 26,
-              color: Color(0xFFFF8E5D),
+              color: palette.isLight ? palette.textAccent : const Color(0xFFFF8E5D),
             ),
           ),
           const SizedBox(width: 12),
@@ -419,7 +431,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                   style: GoogleFonts.manrope(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFFF7EE),
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -427,7 +439,7 @@ class _ManageWalletsCardState extends State<ManageWalletsCard> {
                   'Create a wallet to start managing your money.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: const Color(0xFFC6B5AB),
+                    color: palette.textSecondary,
                   ),
                 ),
               ],

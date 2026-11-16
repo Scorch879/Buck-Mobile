@@ -2,25 +2,21 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/dev_config.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_layout.dart';
 import '../../../core/widgets/buck_footer_nav.dart';
 import '../../../core/widgets/buck_header.dart';
 import '../../../core/widgets/buck_screen_background.dart';
 import '../../auth/data/auth_service.dart';
-import '../../settings/data/settings_service.dart';
+import 'buck_shell_dependencies.dart';
+import 'profile_summary_view_model.dart';
 import 'widgets/profile_side_panel.dart';
 import '../../dashboard/presentation/screens/home_dashboard_screen.dart';
 import '../../dashboard/presentation/widgets/quick_actions_card.dart';
 import '../../expenses/presentation/add_expense_dialog.dart';
 import '../../expenses/presentation/screens/expenses_screen.dart';
 import '../../expenses/presentation/screens/receipt_scanner_screen.dart';
-import '../../finance/data/dev_finance_source.dart';
-import '../../finance/data/finance_repository.dart';
 import '../../finance/presentation/finance_controller.dart';
-import '../../goals/data/goals_repository.dart';
 import '../../goals/presentation/goals_controller.dart';
 import '../../goals/presentation/screens/goals_screen.dart';
 import '../../income/presentation/add_income_dialog.dart';
@@ -55,17 +51,9 @@ class _MainShellState extends State<MainShell> {
   int? _programmaticPageTarget;
   bool _menuOpen = false;
   late final FinanceController _finance =
-      widget.financeController ??
-      (SupabaseService.isInitialized
-          ? FinanceController(FinanceRepository(SupabaseService.client))
-          : FinanceController(DevFinanceSource()));
+      widget.financeController ?? BuckShellDependencies.createFinanceController();
   late final GoalsController _goals =
-      widget.goalsController ??
-      (SupabaseService.isInitialized && !DevConfig.mockAdminSessionActive.value
-          ? GoalsController(
-              repository: GoalsRepository(SupabaseService.client),
-            )
-          : GoalsController());
+      widget.goalsController ?? BuckShellDependencies.createGoalsController();
 
   @override
   void initState() {
@@ -97,18 +85,10 @@ class _MainShellState extends State<MainShell> {
     return false;
   }
 
-  String get _welcomeTitle {
-    final profileName = _finance.snapshot?.displayName;
-    if (profileName != null) return 'Welcome $profileName';
-    final user = _authService.currentUser;
-    final metadata = user?.userMetadata ?? const {};
-    final name = (metadata['full_name'] ?? metadata['username']) as String?;
-    final fallback = user?.email?.split('@').first;
-    final display = (name != null && name.trim().isNotEmpty)
-        ? name.trim()
-        : fallback;
-    return display == null ? 'Welcome' : 'Welcome $display';
-  }
+  ProfileSummaryViewModel get _profileSummary => ProfileSummaryViewModel.from(
+        snapshot: _finance.snapshot,
+        user: _authService.currentUser,
+      );
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
@@ -122,77 +102,19 @@ class _MainShellState extends State<MainShell> {
       );
   }
 
-  String get _panelDisplayName {
-    final profileName = _finance.snapshot?.displayName;
-    if (profileName != null && profileName.trim().isNotEmpty) {
-      return profileName.trim();
-    }
-    final user = _authService.currentUser;
-    final metadata = user?.userMetadata ?? const {};
-    final name = (metadata['full_name'] ?? metadata['username']) as String?;
-    if (name != null && name.trim().isNotEmpty) {
-      return name.trim();
-    }
-    if (DevConfig.mockAdminSessionActive.value) return 'Dev Admin';
-    final fallback = user?.email?.split('@').first;
-    return (fallback != null && fallback.isNotEmpty) ? fallback : 'Buck Account';
-  }
-
-  String get _panelEmail {
-    if (DevConfig.mockAdminSessionActive.value) {
-      return '${DevConfig.adminEmail} (Dev Mode)';
-    }
-    final email = _authService.currentUser?.email;
-    return (email != null && email.isNotEmpty) ? email : 'Signed in';
-  }
-
-  String get _panelConnectionLabel {
-    if (DevConfig.mockAdminSessionActive.value) {
-      return 'Connected in Dev Mode';
-    }
-    final user = _authService.currentUser;
-    final isGoogle = user?.appMetadata['provider'] == 'google' ||
-        (user?.identities?.any((id) => id.provider == 'google') ?? false);
-    if (isGoogle) return 'Connected with Google';
-    if (user != null) return 'Connected with Email';
-    return 'Connected with Buck';
-  }
-
-  BuckSettingsContext get _panelSettingsContext {
-    final isDevMode = DevConfig.mockAdminSessionActive.value;
-    final user = _authService.currentUser;
-    final isGoogle = !isDevMode &&
-        (user?.appMetadata['provider'] == 'google' ||
-            (user?.identities?.any((id) => id.provider == 'google') ?? false));
-    return BuckSettingsContext(
-      displayName: _panelDisplayName,
-      email: _panelEmail,
-      connectionLabel: _panelConnectionLabel,
-      providerName: isDevMode
-          ? 'Dev Mode'
-          : isGoogle
-              ? 'Google'
-              : 'Buck Auth',
-      isGoogleManaged: isGoogle,
-      isDevMode: isDevMode,
-    );
-  }
-
   void _showMenuSheet() {
     if (_menuOpen) return;
     _menuOpen = true;
+    final profile = _profileSummary;
     showProfileSidePanel(
       context: context,
-      displayName: _panelDisplayName,
-      email: _panelEmail,
-      connectionLabel: _panelConnectionLabel,
-      settingsContext: _panelSettingsContext,
+      displayName: profile.displayName,
+      email: profile.email,
+      connectionLabel: profile.connectionLabel,
+      settingsContext: profile.settingsContext,
       onProfileUpdated: _finance.refresh,
       onShowMessage: _showMessage,
-      onSignOut: () async {
-        DevConfig.mockAdminSessionActive.value = false;
-        await _authService.signOut();
-      },
+      onSignOut: _authService.signOut,
     ).whenComplete(() {
       if (mounted) {
         _menuOpen = false;
@@ -457,7 +379,7 @@ class _MainShellState extends State<MainShell> {
           Column(
             children: [
               BuckHeader(
-                title: _welcomeTitle,
+                title: _profileSummary.welcomeTitle,
                 onMenuTap: _showMenuSheet,
                 onSwipeOpenMenu: _showMenuSheet,
               ),

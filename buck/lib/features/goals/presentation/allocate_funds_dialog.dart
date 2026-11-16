@@ -62,6 +62,9 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
   @override
   Widget build(BuildContext context) {
     final goal = widget.goal;
+    final palette = BuckPalette.of(context);
+    final fieldFill =
+        palette.isLight ? palette.inputBg : AppColors.cardSurfaceAlt;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -70,11 +73,11 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
         constraints: const BoxConstraints(maxWidth: 400),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.glassCardBg,
+            color: palette.glassCardBg,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.glassCardBorder, width: 1),
-            boxShadow: const [
-              BoxShadow(color: AppColors.glassCardGlow, blurRadius: 28),
+            border: Border.all(color: palette.glassCardBorder, width: 1),
+            boxShadow: [
+              BoxShadow(color: palette.glassCardGlow, blurRadius: 28),
             ],
           ),
           child: SingleChildScrollView(
@@ -95,7 +98,7 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                             style: GoogleFonts.manrope(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFFFFF7EE),
+                              color: palette.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -104,7 +107,7 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                             style: GoogleFonts.manrope(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: const Color(0xFFC6B5AB),
+                              color: palette.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -113,7 +116,7 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                      icon: Icon(Icons.close, color: palette.textSecondary, size: 20),
                       onPressed: () => Navigator.of(context).pop(),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -126,9 +129,9 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.cardSurfaceAlt,
+                    color: palette.surfaceElevated,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.inputBorder, width: 1),
+                    border: Border.all(color: palette.border, width: 1),
                   ),
                   child: Column(
                     children: [
@@ -138,7 +141,7 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                           Flexible(
                             child: Text(
                               'Current Progress',
-                              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC6B5AB)),
+                              style: GoogleFonts.inter(fontSize: 12, color: palette.textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -149,7 +152,11 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                               fit: BoxFit.scaleDown,
                               child: Text(
                                 '${_formatCurrency(goal.currentAmount)} / ${_formatCurrency(goal.targetAmount)}',
-                                style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                                style: GoogleFonts.manrope(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.textPrimary,
+                                ),
                               ),
                             ),
                           ),
@@ -161,7 +168,7 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                         child: Container(
                           height: 6,
                           width: double.infinity,
-                          color: const Color(0xFF4A2D22),
+                          color: palette.trackBrown,
                           alignment: Alignment.centerLeft,
                           child: FractionallySizedBox(
                             widthFactor: goal.progress,
@@ -191,11 +198,11 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4A100B),
+                      color: palette.dangerSurface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFEA4335).withValues(alpha: 0.6)),
+                      border: Border.all(color: palette.dangerBorder),
                     ),
-                    child: Text(_error!, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFFFD1D1))),
+                    child: Text(_error!, style: GoogleFonts.inter(fontSize: 12, color: palette.dangerTitle)),
                   ),
                   const SizedBox(height: 14),
                 ],
@@ -206,7 +213,7 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFC6B5AB),
+                    color: palette.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -214,19 +221,19 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.add_circle_outline, color: AppColors.primaryOrange, size: 20),
                     filled: true,
-                    fillColor: AppColors.cardSurfaceAlt,
+                    fillColor: fieldFill,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.2),
+                      borderSide: BorderSide(color: palette.border, width: 1.2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.2),
+                      borderSide: BorderSide(color: palette.border, width: 1.2),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -248,16 +255,16 @@ class _AllocateFundsDialogState extends State<AllocateFundsDialog> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.cardSurfaceAlt,
+                            color: fieldFill,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.inputBorder, width: 1),
+                            border: Border.all(color: palette.border, width: 1),
                           ),
                           child: Text(
                             '+₱${q.toInt()}',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                              color: palette.textPrimary,
                             ),
                           ),
                         ),

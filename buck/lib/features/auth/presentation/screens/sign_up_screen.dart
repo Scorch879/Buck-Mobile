@@ -155,9 +155,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     final topSafe = AppLayout.topSafeInset(context);
     final bottomSafe = AppLayout.bottomSafeInset(context);
+    final palette = BuckPalette.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF2B1309),
+      backgroundColor: palette.shellBg,
       extendBody: true,
       body: BuckBackground(
         child: LayoutBuilder(
@@ -319,23 +320,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required bool isCompact,
     required bool isNarrow,
   }) {
+    final palette = BuckPalette.of(context);
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isNarrow ? 16 : (isCompact ? 18 : 22),
         vertical: isCompact ? 16 : (isShort ? 20 : 24),
       ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF281209).withValues(alpha: 0.90),
-            AppColors.cardSurface.withValues(alpha: 0.94),
-          ],
-        ),
+        color: palette.isLight ? palette.glassCardBg : null,
+        gradient: palette.isLight
+            ? null
+            : LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF281209).withValues(alpha: 0.90),
+                  AppColors.cardSurface.withValues(alpha: 0.94),
+                ],
+              ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: AppColors.cardBorder.withValues(alpha: 0.45),
+          color: palette.isLight
+              ? palette.glassCardBorder
+              : AppColors.cardBorder.withValues(alpha: 0.45),
           width: 1.0,
         ),
         boxShadow: [
@@ -345,7 +352,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             offset: const Offset(0, 6),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
+            color: Colors.black.withValues(alpha: palette.isLight ? 0.08 : 0.45),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -417,8 +424,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               height: 52,
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: AppColors.cardSurfaceAlt,
-                  side: const BorderSide(color: AppColors.inputBorder, width: 1.2),
+                  backgroundColor: palette.surfaceElevated,
+                  side: BorderSide(color: palette.border, width: 1.2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(26),
                   ),
@@ -449,7 +456,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(width: 12),
                       Text(
                         'Continue with Google',
-                        style: AppTextStyles.label.copyWith(color: AppColors.textPrimary),
+                        style: AppTextStyles.label.copyWith(color: palette.textPrimary),
                       ),
                     ],
                   ),
@@ -461,15 +468,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
             // Divider
             Row(
               children: [
-                const Expanded(child: Divider(color: AppColors.dividerColor, thickness: 1)),
+                Expanded(child: Divider(color: palette.divider, thickness: 1)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     'or sign up with email',
-                    style: AppTextStyles.bodySubdued.copyWith(fontSize: 12),
+                    style: AppTextStyles.bodySubdued.copyWith(
+                      fontSize: 12,
+                      color: palette.textSecondary,
+                    ),
                   ),
                 ),
-                const Expanded(child: Divider(color: AppColors.dividerColor, thickness: 1)),
+                Expanded(child: Divider(color: palette.divider, thickness: 1)),
               ],
             ),
             SizedBox(height: isShort ? 12 : 16),
@@ -480,19 +490,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4A100B),
+                  color: palette.dangerSurface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFEA4335).withValues(alpha: 0.6)),
+                  border: Border.all(color: palette.dangerBorder),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 18),
+                    Icon(Icons.error_outline, color: palette.dangerTitle, size: 18),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _errorMessage!,
                         style: AppTextStyles.body.copyWith(
-                          color: const Color(0xFFFFD1D1),
+                          color: palette.dangerTitle,
                           fontSize: 12,
                         ),
                       ),
@@ -553,13 +563,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Already have an account? ', style: AppTextStyles.bodySubdued),
+                  Text(
+                    'Already have an account? ',
+                    style: AppTextStyles.bodySubdued.copyWith(
+                      color: palette.textSecondary,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Text(
                       'Sign In',
                       style: AppTextStyles.label.copyWith(
-                        color: AppColors.textPrimary,
+                        color: palette.textPrimary,
                         decoration: TextDecoration.underline,
                       ),
                     ),
