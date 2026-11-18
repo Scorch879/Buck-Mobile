@@ -7,3 +7,6 @@ Future<String?> extractNativeOcrText({
 }) async {
   return null;
 }
+
+/// Optional engine pre-warming hook (used on Web to preload Tesseract.js).
+void warmupNativeOcr() {}

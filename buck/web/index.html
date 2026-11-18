@@ -301,7 +301,7 @@
           var worker = await window.Tesseract.createWorker('eng');
           if (worker && typeof worker.setParameters === 'function') {
             await worker.setParameters({
-              tessedit_pageseg_mode: '6',
+              tessedit_pageseg_mode: '3',
               preserve_interword_spaces: '1'
             });
           }
@@ -314,7 +314,13 @@
       return window._buckTesseractWorkerPromise;
     };
 
-    window._buckPreprocessReceiptCanvas = async function(dataUrl, invertColors) {
+    window.buckWarmupReceiptOcr = function() {
+      try {
+        window._buckGetTesseractWorker().catch(function() {});
+      } catch (_) {}
+    };
+
+    window._buckPreprocessReceiptCanvas = async function(dataUrl, mode) {
       return new Promise(function(resolve) {
         var img = new Image();
         img.onload = function() {
@@ -346,6 +352,12 @@
             }
             ctx.drawImage(img, 0, 0, w, h);
 
+            if (mode === 'natural') {
+              resolve(canvas.toDataURL('image/png'));
+              return;
+            }
+
+            var invertColors = mode === 'invert';
             var imgData = ctx.getImageData(0, 0, w, h);
             var d = imgData.data;
             var pixelCount = w * h;
@@ -407,6 +419,13 @@
       });
     };
 
+    window._buckScoreReceiptText = function(text) {
+      if (!text) return 0;
+      var moneyMatches = text.match(/\d+[.,]\d{2}/g);
+      var digitMatches = text.match(/\d/g);
+      return text.length + ((moneyMatches ? moneyMatches.length : 0) * 35) + ((digitMatches ? digitMatches.length : 0) * 2);
+    };
+
     window.buckRecognizeReceiptBase64 = async function(base64Image) {
       try {
         if (!base64Image) return '';
@@ -417,20 +436,35 @@
           : (base64Image.startsWith('UklGR') ? 'image/webp' : 'image/jpeg');
         var rawUrl = 'data:' + mime + ';base64,' + base64Image;
 
-        var cleanUrl = await window._buckPreprocessReceiptCanvas(rawUrl, false);
-        var result = await worker.recognize(cleanUrl);
-        var text = (result && result.data && result.data.text) ? result.data.text.trim() : '';
+        // Pass 1: Clean resized original lets Tesseract's local Otsu handle dark desks/shadows.
+        var naturalUrl = await window._buckPreprocessReceiptCanvas(rawUrl, 'natural');
+        var naturalRes = await worker.recognize(naturalUrl);
+        var bestText = (naturalRes && naturalRes.data && naturalRes.data.text) ? naturalRes.data.text.trim() : '';
+        var bestScore = window._buckScoreReceiptText(bestText);
 
-        // Dark-mode digital receipts or faint captures fall back to inverted contrast pass.
-        if (text.length < 16) {
-          var invUrl = await window._buckPreprocessReceiptCanvas(rawUrl, true);
-          var invResult = await worker.recognize(invUrl);
-          var invText = (invResult && invResult.data && invResult.data.text) ? invResult.data.text.trim() : '';
-          if (invText.length > text.length) {
-            text = invText;
+        var hasMoney = /\d+[.,]\d{2}/.test(bestText);
+        if (bestText.length < 24 || !hasMoney) {
+          // Pass 2: Contrast-stretched grayscale for faint thermal paper.
+          var stretchUrl = await window._buckPreprocessReceiptCanvas(rawUrl, 'stretch');
+          var stretchRes = await worker.recognize(stretchUrl);
+          var stretchText = (stretchRes && stretchRes.data && stretchRes.data.text) ? stretchRes.data.text.trim() : '';
+          var stretchScore = window._buckScoreReceiptText(stretchText);
+          if (stretchScore > bestScore) {
+            bestText = stretchText;
+            bestScore = stretchScore;
           }
         }
-        return text;
+
+        if (bestText.length < 16) {
+          // Pass 3: Inverted pass for dark-mode digital receipts.
+          var invUrl = await window._buckPreprocessReceiptCanvas(rawUrl, 'invert');
+          var invRes = await worker.recognize(invUrl);
+          var invText = (invRes && invRes.data && invRes.data.text) ? invRes.data.text.trim() : '';
+          if (window._buckScoreReceiptText(invText) > bestScore) {
+            bestText = invText;
+          }
+        }
+        return bestText;
       } catch (e) {
         console.warn('Buck web OCR failed:', e);
         return '';

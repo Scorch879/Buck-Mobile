@@ -571,6 +571,9 @@ class ReceiptOcrProcessor {
     );
   }
 
+  /// Pre-warms the OCR engine (on Web, preloads Tesseract.js before capture).
+  static void warmup() => ocr_engine.warmupNativeOcr();
+
   /// Executes the full on-device OCR pipeline (preprocessing, ML Kit text
   /// extraction on mobile, fallback synthesis for web/desktop/test, and heuristic parsing).
   static Future<ReceiptPipelineOutput> processReceipt({

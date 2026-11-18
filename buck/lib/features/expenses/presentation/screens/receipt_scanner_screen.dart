@@ -155,6 +155,7 @@ class _ReceiptScannerScreenState extends State<ReceiptScannerScreen>
     AppLayout.pushDarkBarSurface();
     WidgetsBinding.instance.addObserver(this);
     if (widget.enableLiveCamera) {
+      ReceiptOcrProcessor.warmup();
       _initCamera();
     }
   }

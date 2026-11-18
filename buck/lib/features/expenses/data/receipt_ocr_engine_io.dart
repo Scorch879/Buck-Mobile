@@ -4,11 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
+/// Optional engine pre-warming hook (ML Kit initializes locally on demand).
+void warmupNativeOcr() {}
+
 /// On-device ML Vision OCR engine using Google ML Kit Text Recognition v2.
 ///
 /// Runs offline on Android and iOS without transmitting receipt images over
-/// the network (SRS 3.5.1 / SDD 5.1 Stage 3). Returns `null` on desktop/test
-/// environments or if the native plugin channel is unavailable.
+/// the network (SRS 3.5.1 / SDD 5.1 Stage 3). Falls back to writing [imageBytes]
+/// to a temporary file when [imagePath] is missing or inaccessible (e.g. URI).
+/// Returns `null` on desktop/test environments or if OCR fails.
 Future<String?> extractNativeOcrText({
   String? imagePath,
   Uint8List? imageBytes,
@@ -17,16 +21,33 @@ Future<String?> extractNativeOcrText({
     return null;
   }
 
-  if (imagePath == null || imagePath.isEmpty) {
+  File? tempFile;
+  String? resolvedPath;
+
+  if (imagePath != null && imagePath.isNotEmpty) {
+    final candidate = File(imagePath);
+    if (candidate.existsSync()) {
+      resolvedPath = imagePath;
+    }
+  }
+
+  if (resolvedPath == null && imageBytes != null && imageBytes.isNotEmpty) {
+    try {
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      tempFile = File('${Directory.systemTemp.path}/buck_ocr_$stamp.jpg');
+      await tempFile.writeAsBytes(imageBytes, flush: true);
+      resolvedPath = tempFile.path;
+    } catch (e) {
+      debugPrint('ReceiptOcrEngine: temp image write failed ($e)');
+      return null;
+    }
+  }
+
+  if (resolvedPath == null) {
     return null;
   }
 
-  final file = File(imagePath);
-  if (!file.existsSync()) {
-    return null;
-  }
-
-  final inputImage = InputImage.fromFilePath(imagePath);
+  final inputImage = InputImage.fromFilePath(resolvedPath);
   final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
   try {
@@ -44,5 +65,12 @@ Future<String?> extractNativeOcrText({
     return null;
   } finally {
     await recognizer.close();
+    if (tempFile != null) {
+      try {
+        if (tempFile.existsSync()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
+    }
   }
 }

@@ -5,10 +5,20 @@ import 'dart:typed_data';
 @JS('buckRecognizeReceiptBase64')
 external JSPromise<JSString?>? _jsRecognizeReceiptBase64(JSString base64Image);
 
+@JS('buckWarmupReceiptOcr')
+external void _jsWarmupReceiptOcr();
+
+/// Pre-warms the Tesseract.js Web Worker so it is ready before capture.
+void warmupNativeOcr() {
+  try {
+    _jsWarmupReceiptOcr();
+  } catch (_) {}
+}
+
 /// Web / Safari browser OCR engine powered by Tesseract.js via `dart:js_interop`.
 ///
-/// Allows testing real receipt OCR directly on iPhone Safari without requiring
-/// a macOS Xcode build. Returns `null` if bytes are empty, Tesseract fails,
+/// Allows testing real receipt OCR directly on Chrome / Safari without requiring
+/// a native build. Returns `null` if bytes are empty, Tesseract fails,
 /// or recognition times out.
 Future<String?> extractNativeOcrText({
   String? imagePath,
@@ -24,7 +34,7 @@ Future<String?> extractNativeOcrText({
     if (promise == null) return null;
 
     final result = await promise.toDart.timeout(
-      const Duration(seconds: 25),
+      const Duration(seconds: 45),
       onTimeout: () => null,
     );
     final text = result?.toDart.trim();
